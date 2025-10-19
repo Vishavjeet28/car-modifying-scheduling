@@ -1,0 +1,634 @@
+{% extends 'admin_panel/base.html' %}
+
+{% block title %}Dashboard - Admin Panel - CarModX{% endblock %}
+
+{% block page_title %}
+    Admin Dashboard
+    <button class="btn btn-outline-primary btn-sm ms-3" id="refreshDashboard" title="Refresh Data">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        transition: transform 0.2s;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stats-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .stats-card.primary { border-left: 4px solid #0d6efd; }
+    .stats-card.success { border-left: 4px solid #198754; }
+    .stats-card.warning { border-left: 4px solid #fd7e14; }
+    .stats-card.info { border-left: 4px solid #0dcaf0; }
+    .stats-card.danger { border-left: 4px solid #dc3545; }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    
+    .metric-change {
+        font-size: 0.8em;
+        margin-top: 0.25rem;
+    }
+    
+    .metric-change.positive { color: #198754; }
+    .metric-change.negative { color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Dashboard Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-1">
+                            <i class="bi bi-house-door me-2"></i>Welcome to CarModX Admin Panel
+                        </h5>
+                        <p class="card-text text-muted mb-0">
+                            Last updated: <span id="lastUpdated">{{ current_time|date:"M d, Y H:i" }}</span>
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        <div class="badge bg-success">System Online</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Metrics Row -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stats-card primary">
+            <div class="card-body text-center">
+                <i class="bi bi-tools text-primary display-4 mb-3"></i>
+                <h3 class="mb-1" id="totalServices">{{ stats.total_services }}</h3>
+                <p class="mb-0">Total Services</p>
+                <small class="text-muted">{{ stats.active_services }} active</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stats-card success">
+            <div class="card-body text-center">
+                <i class="bi bi-people text-success display-4 mb-3"></i>
+                <h3 class="mb-1" id="activeEmployees">{{ stats.active_employees }}</h3>
+                <p class="mb-0">Active Employees</p>
+                <small class="text-muted">{{ stats.total_employees }} total</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stats-card warning">
+            <div class="card-body text-center">
+                <i class="bi bi-calendar-check text-warning display-4 mb-3"></i>
+                <h3 class="mb-1" id="pendingAppointments">{{ stats.pending_appointments }}</h3>
+                <p class="mb-0">Pending Appointments</p>
+                <small class="text-muted">{{ stats.total_appointments }} total</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stats-card info">
+            <div class="card-body text-center">
+                <i class="bi bi-currency-rupee text-info display-4 mb-3"></i>
+                <h3 class="mb-1" id="totalRevenue">₹{{ stats.total_revenue|floatformat:0 }}</h3>
+                <p class="mb-0">Total Revenue</p>
+                <small class="text-muted">₹{{ stats.recent_revenue|floatformat:0 }} this month</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Secondary Metrics Row -->
+<div class="row mb-4">
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+        <div class="card stats-card">
+            <div class="card-body text-center py-3">
+                <h5 class="mb-1" id="todayAppointments">{{ stats.today_appointments }}</h5>
+                <small class="text-muted">Today</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+        <div class="card stats-card">
+            <div class="card-body text-center py-3">
+                <h5 class="mb-1" id="weekAppointments">{{ stats.week_appointments }}</h5>
+                <small class="text-muted">This Week</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+        <div class="card stats-card">
+            <div class="card-body text-center py-3">
+                <h5 class="mb-1" id="completionRate">{{ stats.completion_rate }}%</h5>
+                <small class="text-muted">Completion Rate</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+        <div class="card stats-card">
+            <div class="card-body text-center py-3">
+                <h5 class="mb-1" id="avgValue">₹{{ stats.avg_appointment_value|floatformat:0 }}</h5>
+                <small class="text-muted">Avg. Value</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+        <div class="card stats-card">
+            <div class="card-body text-center py-3">
+                <h5 class="mb-1" id="confirmedAppointments">{{ stats.confirmed_appointments }}</h5>
+                <small class="text-muted">Confirmed</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+        <div class="card stats-card">
+            <div class="card-body text-center py-3">
+                <h5 class="mb-1" id="inProgressAppointments">{{ stats.in_progress_appointments }}</h5>
+                <small class="text-muted">In Progress</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <!-- Appointment Trends Chart -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-graph-up me-2"></i>Appointment Trends (Last 7 Days)
+                </h6>
+                <small class="text-muted">Daily appointments</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="appointmentTrendsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Appointment Status Distribution -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-pie-chart me-2"></i>Appointment Status
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="appointmentStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance and Analytics Row -->
+<div class="row mb-4">
+    <!-- Popular Services -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-star me-2"></i>Popular Services
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if stats.popular_services %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Service</th>
+                                    <th>Bookings</th>
+                                    <th>Price</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for service in stats.popular_services %}
+                                <tr>
+                                    <td>{{ service.name|truncatechars:30 }}</td>
+                                    <td><span class="badge bg-primary">{{ service.appointment_count }}</span></td>
+                                    <td>₹{{ service.base_price|floatformat:0 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-inbox display-4 mb-2"></i>
+                        <p class="mb-0">No service data available</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Performance -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-trophy me-2"></i>Top Performers (Last 30 Days)
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if stats.employee_performance %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Completed</th>
+                                    <th>Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for employee in stats.employee_performance %}
+                                <tr>
+                                    <td>{{ employee.user__first_name }} {{ employee.user__last_name }}</td>
+                                    <td><span class="badge bg-success">{{ employee.completed_appointments }}</span></td>
+                                    <td>₹{{ employee.total_revenue|default:0|floatformat:0 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-inbox display-4 mb-2"></i>
+                        <p class="mb-0">No performance data available</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions and System Status Row -->
+<div class="row mb-4">
+    <!-- Quick Actions -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-lightning me-2"></i>Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <a href="#" class="btn btn-outline-primary w-100" onclick="return false;">
+                            <i class="bi bi-plus-circle me-1"></i>Add Service
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="#" class="btn btn-outline-success w-100" onclick="return false;">
+                            <i class="bi bi-person-plus me-1"></i>Add Employee
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="#" class="btn btn-outline-info w-100" onclick="return false;">
+                            <i class="bi bi-tags me-1"></i>Categories
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="#" class="btn btn-outline-warning w-100" onclick="return false;">
+                            <i class="bi bi-gear me-1"></i>Settings
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Categories -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-collection me-2"></i>Service Categories
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if stats.category_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Services</th>
+                                    <th>Bookings</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in stats.category_stats %}
+                                <tr>
+                                    <td>{{ category.name|truncatechars:20 }}</td>
+                                    <td><span class="badge bg-info">{{ category.service_count }}</span></td>
+                                    <td><span class="badge bg-primary">{{ category.appointment_count }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-inbox display-4 mb-2"></i>
+                        <p class="mb-0">No categories available</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Status -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-shield-check me-2"></i>System Status
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <i class="bi bi-database text-success display-6"></i>
+                            <h6 class="mt-2">Database</h6>
+                            <span class="badge bg-success">Online</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <i class="bi bi-server text-success display-6"></i>
+                            <h6 class="mt-2">Server</h6>
+                            <span class="badge bg-success">Running</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <i class="bi bi-envelope text-warning display-6"></i>
+                            <h6 class="mt-2">Email Service</h6>
+                            <span class="badge bg-warning">Development</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <i class="bi bi-cloud text-success display-6"></i>
+                            <h6 class="mt-2">Backup</h6>
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Dashboard data from Django context
+const dashboardData = {
+    appointmentTrends: {{ stats.appointment_trends|safe }},
+    appointmentStatus: {
+        pending: {{ stats.pending_appointments }},
+        confirmed: {{ stats.confirmed_appointments }},
+        inProgress: {{ stats.in_progress_appointments }},
+        completed: {{ stats.completed_appointments }},
+        cancelled: {{ stats.cancelled_appointments }}
+    }
+};
+
+// Chart configurations
+const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            position: 'bottom'
+        }
+    }
+};
+
+// Initialize Appointment Trends Chart
+const trendsCtx = document.getElementById('appointmentTrendsChart').getContext('2d');
+const appointmentTrendsChart = new Chart(trendsCtx, {
+    type: 'line',
+    data: {
+        labels: dashboardData.appointmentTrends.map(item => {
+            const date = new Date(item.date);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }),
+        datasets: [{
+            label: 'Appointments',
+            data: dashboardData.appointmentTrends.map(item => item.count),
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        ...chartOptions,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+
+// Initialize Appointment Status Chart
+const statusCtx = document.getElementById('appointmentStatusChart').getContext('2d');
+const appointmentStatusChart = new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Pending', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'],
+        datasets: [{
+            data: [
+                dashboardData.appointmentStatus.pending,
+                dashboardData.appointmentStatus.confirmed,
+                dashboardData.appointmentStatus.inProgress,
+                dashboardData.appointmentStatus.completed,
+                dashboardData.appointmentStatus.cancelled
+            ],
+            backgroundColor: [
+                '#fd7e14', // warning - pending
+                '#0dcaf0', // info - confirmed
+                '#6f42c1', // purple - in progress
+                '#198754', // success - completed
+                '#dc3545'  // danger - cancelled
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        ...chartOptions,
+        cutout: '60%'
+    }
+});
+
+// Dashboard refresh functionality
+let refreshInterval;
+
+function refreshDashboard() {
+    const refreshBtn = document.getElementById('refreshDashboard');
+    const originalContent = refreshBtn.innerHTML;
+    
+    // Show loading state
+    refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Refreshing...';
+    refreshBtn.disabled = true;
+    
+    // Add loading overlay to charts
+    document.querySelectorAll('.chart-container').forEach(container => {
+        const overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = '<div class="spinner-border text-primary" role="status"></div>';
+        container.appendChild(overlay);
+    });
+    
+    fetch('{% url "admin_panel:dashboard_stats_ajax" %}', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateDashboardStats(data.stats);
+            updateCharts(data.stats);
+            document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+        } else {
+            console.error('Failed to refresh dashboard:', data.error);
+            alert('Failed to refresh dashboard data. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error refreshing dashboard:', error);
+        alert('Error refreshing dashboard data. Please check your connection.');
+    })
+    .finally(() => {
+        // Remove loading overlays
+        document.querySelectorAll('.loading-overlay').forEach(overlay => {
+            overlay.remove();
+        });
+        
+        // Reset button
+        refreshBtn.innerHTML = originalContent;
+        refreshBtn.disabled = false;
+    });
+}
+
+function updateDashboardStats(stats) {
+    // Update main metrics
+    document.getElementById('totalServices').textContent = stats.total_services;
+    document.getElementById('activeEmployees').textContent = stats.active_employees;
+    document.getElementById('pendingAppointments').textContent = stats.pending_appointments;
+    document.getElementById('totalRevenue').textContent = '₹' + Math.round(stats.total_revenue).toLocaleString();
+    
+    // Update secondary metrics
+    document.getElementById('todayAppointments').textContent = stats.today_appointments;
+    document.getElementById('weekAppointments').textContent = stats.week_appointments;
+    document.getElementById('completionRate').textContent = stats.completion_rate + '%';
+    document.getElementById('avgValue').textContent = '₹' + Math.round(stats.avg_appointment_value).toLocaleString();
+    document.getElementById('confirmedAppointments').textContent = stats.confirmed_appointments;
+    document.getElementById('inProgressAppointments').textContent = stats.in_progress_appointments;
+}
+
+function updateCharts(stats) {
+    // Update trends chart
+    appointmentTrendsChart.data.labels = stats.appointment_trends.map(item => {
+        const date = new Date(item.date);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+    appointmentTrendsChart.data.datasets[0].data = stats.appointment_trends.map(item => item.count);
+    appointmentTrendsChart.update();
+    
+    // Update status chart
+    appointmentStatusChart.data.datasets[0].data = [
+        stats.pending_appointments,
+        stats.confirmed_appointments,
+        stats.in_progress_appointments,
+        stats.completed_appointments,
+        stats.cancelled_appointments
+    ];
+    appointmentStatusChart.update();
+}
+
+// Event listeners
+document.getElementById('refreshDashboard').addEventListener('click', refreshDashboard);
+
+// Auto-refresh every 5 minutes
+refreshInterval = setInterval(refreshDashboard, {{ dashboard_refresh_interval }});
+
+// Add CSS for spinning animation
+const style = document.createElement('style');
+style.textContent = `
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(style);
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
+</script>
+{% endblock %}

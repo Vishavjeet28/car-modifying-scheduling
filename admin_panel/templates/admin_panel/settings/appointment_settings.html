@@ -1,0 +1,216 @@
+{% extends 'admin_panel/base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">{{ page_title }}</h1>
+                    <p class="text-muted">Configure appointment booking and management settings</p>
+                </div>
+                <div>
+                    <a href="{% url 'admin_panel:settings_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Settings
+                    </a>
+                </div>
+            </div>
+
+            <!-- Settings Form -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-calendar"></i> Appointment Configuration
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" novalidate>
+                                {% csrf_token %}
+                                
+                                <h6 class="mb-3">Booking Limits</h6>
+                                <div class="row">
+                                    <!-- Max Appointments Per Slot -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.max_appointments_per_slot.id_for_label }}" class="form-label">
+                                            Max Appointments Per Slot <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.max_appointments_per_slot }}
+                                        {% if form.max_appointments_per_slot.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.max_appointments_per_slot.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">{{ form.max_appointments_per_slot.help_text }}</div>
+                                    </div>
+
+                                    <!-- Cancellation Deadline -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.cancellation_deadline_hours.id_for_label }}" class="form-label">
+                                            Cancellation Deadline (hours) <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.cancellation_deadline_hours }}
+                                        {% if form.cancellation_deadline_hours.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.cancellation_deadline_hours.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">{{ form.cancellation_deadline_hours.help_text }}</div>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <h6 class="mb-3">Automation Settings</h6>
+                                <div class="row">
+                                    <!-- Auto Confirm -->
+                                    <div class="col-md-6 mb-3">
+                                        <div class="form-check">
+                                            {{ form.auto_confirm_appointments }}
+                                            <label class="form-check-label" for="{{ form.auto_confirm_appointments.id_for_label }}">
+                                                Auto-confirm Appointments
+                                            </label>
+                                        </div>
+                                        {% if form.auto_confirm_appointments.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.auto_confirm_appointments.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">{{ form.auto_confirm_appointments.help_text }}</div>
+                                    </div>
+
+                                    <!-- Require Employee Assignment -->
+                                    <div class="col-md-6 mb-3">
+                                        <div class="form-check">
+                                            {{ form.require_employee_assignment }}
+                                            <label class="form-check-label" for="{{ form.require_employee_assignment.id_for_label }}">
+                                                Require Employee Assignment
+                                            </label>
+                                        </div>
+                                        {% if form.require_employee_assignment.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.require_employee_assignment.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">{{ form.require_employee_assignment.help_text }}</div>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <h6 class="mb-3">Reminder Settings</h6>
+                                <div class="row">
+                                    <!-- Send Reminders -->
+                                    <div class="col-md-6 mb-3">
+                                        <div class="form-check">
+                                            {{ form.send_reminder_notifications }}
+                                            <label class="form-check-label" for="{{ form.send_reminder_notifications.id_for_label }}">
+                                                Send Reminder Notifications
+                                            </label>
+                                        </div>
+                                        {% if form.send_reminder_notifications.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.send_reminder_notifications.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">{{ form.send_reminder_notifications.help_text }}</div>
+                                    </div>
+
+                                    <!-- Reminder Hours Before -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.reminder_hours_before.id_for_label }}" class="form-label">
+                                            Reminder Hours Before <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.reminder_hours_before }}
+                                        {% if form.reminder_hours_before.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.reminder_hours_before.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">{{ form.reminder_hours_before.help_text }}</div>
+                                    </div>
+                                </div>
+
+                                <!-- Form Errors -->
+                                {% if form.non_field_errors %}
+                                    <div class="alert alert-danger">
+                                        {{ form.non_field_errors }}
+                                    </div>
+                                {% endif %}
+
+                                <!-- Form Actions -->
+                                <div class="d-flex justify-content-between mt-4">
+                                    <a href="{% url 'admin_panel:settings_list' %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Save Settings
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Help Panel -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-info-circle"></i> Configuration Help
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <h6>Max Appointments Per Slot</h6>
+                            <p class="small text-muted">
+                                How many appointments can be booked for the same time slot. Usually 1 for exclusive service.
+                            </p>
+
+                            <h6>Cancellation Deadline</h6>
+                            <p class="small text-muted">
+                                Minimum notice required for cancellations. Helps prevent last-minute cancellations.
+                            </p>
+
+                            <h6>Auto-confirm</h6>
+                            <p class="small text-muted">
+                                Automatically approve new appointments without manual review. Speeds up booking process.
+                            </p>
+
+                            <h6>Employee Assignment</h6>
+                            <p class="small text-muted">
+                                Require appointments to be assigned to specific employees before confirmation.
+                            </p>
+
+                            <h6>Reminders</h6>
+                            <p class="small text-muted">
+                                Send automatic reminder notifications to customers before their appointments.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-lightbulb"></i> Best Practices
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="small text-muted mb-0">
+                                <li>Set reasonable cancellation deadlines (24-48 hours)</li>
+                                <li>Auto-confirm for faster customer experience</li>
+                                <li>Require employee assignment for better scheduling</li>
+                                <li>Send reminders 24 hours before appointments</li>
+                                <li>Limit slots to prevent overbooking</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

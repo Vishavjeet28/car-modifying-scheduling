@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Appointment #{{ appointment.id }} - CarModX{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0"><i class="fas fa-calendar-alt"></i> Appointment #{{ appointment.id }}</h3>
+                    <span class="badge bg-{% if appointment.status == 'confirmed' %}success{% elif appointment.status == 'pending' %}warning{% elif appointment.status == 'completed' %}info{% elif appointment.status == 'cancelled' %}danger{% else %}secondary{% endif %} fs-6">
+                        {{ appointment.get_status_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <!-- Service Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <h4>{{ appointment.selected_service.name }}</h4>
+                            <p class="text-muted">{{ appointment.selected_service.description }}</p>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-primary me-2">{{ appointment.selected_service.category.name }}</span>
+                                <span class="text-muted me-3">
+                                    <i class="fas fa-clock"></i> {{ appointment.selected_service.duration_hours|floatformat:1 }}h
+                                </span>
+                                <span class="h5 text-success mb-0">
+                                    <i class="fas fa-rupee-sign"></i> ₹{{ appointment.selected_service.base_price|floatformat:2 }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            {% if appointment.selected_service.image %}
+                            <img src="{{ appointment.selected_service.image.url }}" alt="{{ appointment.selected_service.name }}" class="img-fluid rounded" style="max-height: 100px;">
+                            {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 100px; width: 100px;">
+                                <i class="{{ appointment.selected_service.category.icon|default:'fas fa-cog' }} fa-2x text-muted"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Appointment Details -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-calendar"></i> Appointment Details</h5>
+                            <p><strong>Date:</strong> {{ appointment.slot_date|date:"F d, Y" }}</p>
+                            <p><strong>Time:</strong> {{ appointment.get_slot_time_display }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge bg-{% if appointment.status == 'booked' %}success{% elif appointment.status == 'cancelled' %}danger{% elif appointment.status == 'completed' %}info{% else %}secondary{% endif %}">
+                                    {{ appointment.get_status_display }}
+                                </span>
+                            </p>
+                            <p><strong>Booked on:</strong> {{ appointment.created_at|date:"M d, Y g:i A" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-car"></i> Vehicle Information</h5>
+                            <p><strong>Vehicle:</strong> {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}</p>
+                            <p><strong>Year:</strong> {{ appointment.vehicle_year }}</p>
+                            <p><strong>License:</strong> {{ appointment.vehicle_license }}</p>
+                            {% if appointment.special_requirements %}
+                            <p><strong>Special Requirements:</strong><br>
+                                <small class="text-muted">{{ appointment.special_requirements }}</small>
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Customer Information -->
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-user"></i> Customer Information</h5>
+                            <p><strong>Name:</strong> {{ appointment.customer.get_full_name|default:appointment.customer.username }}</p>
+                            <p><strong>Email:</strong> {{ appointment.customer.email }}</p>
+                            {% if appointment.customer.phone %}
+                                <p><strong>Phone:</strong> {{ appointment.customer.phone }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-info-circle"></i> Additional Information</h5>
+                            <p><strong>Appointment ID:</strong> #{{ appointment.id }}</p>
+                            <p><strong>Created:</strong> {{ appointment.created_at|date:"M d, Y g:i A" }}</p>
+                            <p><strong>Last Updated:</strong> {{ appointment.updated_at|date:"M d, Y g:i A" }}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <hr>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        {% if user == appointment.customer %}
+                            {% if appointment.status == 'booked' and appointment.slot_date >= today %}
+                                <a href="{% url 'appointments:cancel_appointment' appointment.id %}" class="btn btn-outline-danger me-md-2">
+                                    <i class="fas fa-times"></i> Cancel Appointment
+                                </a>
+                            {% endif %}
+                            <a href="{% url 'appointments:my_appointments' %}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-list"></i> My Appointments
+                            </a>
+                        {% endif %}
+                        {% if user.is_staff or user.role == 'employee' %}
+                            {% if appointment.status == 'booked' %}
+                                <a href="{% url 'appointments:update_status' appointment.id %}" class="btn btn-outline-primary me-md-2">
+                                    <i class="fas fa-edit"></i> Update Status
+                                </a>
+                            {% endif %}
+                            <a href="{% url 'appointments:appointment_list' %}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-list"></i> All Appointments
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'services:service_detail' appointment.selected_service.id %}" class="btn btn-outline-info me-md-2">
+                            <i class="fas fa-info-circle"></i> View Service
+                        </a>
+                        <a href="{% url 'accounts:dashboard' %}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,453 @@
+{% extends 'admin_panel/base.html' %}
+{% load admin_extras %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-category-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .setting-key {
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+    .setting-value {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">{{ page_title }}</h1>
+                    <p class="text-muted">Manage system configuration settings</p>
+                </div>
+                <div>
+                    <a href="{% url 'admin_panel:settings_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Setting
+                    </a>
+                    <div class="btn-group ms-2">
+                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-cog"></i> Quick Settings
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'admin_panel:time_slot_settings' %}">
+                                <i class="fas fa-clock"></i> Time Slots
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'admin_panel:appointment_settings' %}">
+                                <i class="fas fa-calendar"></i> Appointments
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'admin_panel:notification_settings' %}">
+                                <i class="fas fa-bell"></i> Notifications
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">Total Settings</h5>
+                                    <h3 class="mb-0">{{ total_settings }}</h3>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-cogs fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>   
+             <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">Time Slots</h5>
+                                    <h3 class="mb-0">{{ categories.time_slots }}</h3>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-clock fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">Appointments</h5>
+                                    <h3 class="mb-0">{{ categories.appointments }}</h3>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-calendar fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">Notifications</h5>
+                                    <h3 class="mb-0">{{ categories.notifications }}</h3>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-bell fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search and Filter Form -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            {{ search_form.search }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ search_form.category }}
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                            <a href="{% url 'admin_panel:settings_list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Clear
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="dropdown">
+                                <button class="btn btn-outline-info dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-download"></i> Import/Export
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#importModal">
+                                            <i class="fas fa-upload"></i> Import Settings
+                                        </button>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#resetModal">
+                                            <i class="fas fa-undo"></i> Reset to Defaults
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>   
+         <!-- Settings Table -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">System Settings</h5>
+                    {% if settings %}
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="bulk-action-btn" disabled>
+                            <i class="fas fa-tasks"></i> Bulk Actions
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    {% if settings %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="40">
+                                        <input type="checkbox" class="form-check-input" id="select-all">
+                                    </th>
+                                    <th>Setting Key</th>
+                                    <th>Value</th>
+                                    <th>Description</th>
+                                    <th>Updated By</th>
+                                    <th>Updated At</th>
+                                    <th width="120">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for setting in settings %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input setting-checkbox" value="{{ setting.id }}">
+                                    </td>
+                                    <td>
+                                        <span class="setting-key">{{ setting.key }}</span>
+                                        {% if 'time_slot' in setting.key %}
+                                            <span class="badge bg-info settings-category-badge">Time Slots</span>
+                                        {% elif 'appointment' in setting.key %}
+                                            <span class="badge bg-success settings-category-badge">Appointments</span>
+                                        {% elif 'notification' in setting.key or 'email' in setting.key %}
+                                            <span class="badge bg-warning settings-category-badge">Notifications</span>
+                                        {% elif 'system' in setting.key %}
+                                            <span class="badge bg-secondary settings-category-badge">System</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark settings-category-badge">Other</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="setting-value" title="{{ setting.value }}">
+                                            {{ setting.value|truncatechars:50 }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ setting.description|truncatechars:80 }}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ setting.updated_by.get_full_name|default:setting.updated_by.username }}</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ setting.updated_at|date:"M d, Y H:i" }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'admin_panel:settings_update' setting.pk %}" 
+                                               class="btn btn-outline-primary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'admin_panel:settings_delete' setting.pk %}" 
+                                               class="btn btn-outline-danger" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Settings Found</h5>
+                        <p class="text-muted">Start by creating your first system setting.</p>
+                        <a href="{% url 'admin_panel:settings_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Setting
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>     
+       <!-- Pagination -->
+            {% if is_paginated %}
+            <nav aria-label="Settings pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">Last</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'admin_panel:settings_import' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Import Settings</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="json-file-input" class="form-label">JSON File</label>
+                        <input type="file" class="form-control" name="json_file" accept=".json" required>
+                        <div class="form-text">Upload a JSON file with settings data</div>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="overwrite_existing" id="overwrite-existing">
+                        <label class="form-check-label" for="overwrite-existing">
+                            Overwrite existing settings
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Modal -->
+<div class="modal fade" id="resetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'admin_panel:settings_reset' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Reset Settings</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Choose which settings to reset to default values:</p>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="reset_type" value="all" id="reset-all" checked>
+                        <label class="form-check-label" for="reset-all">
+                            Reset all settings
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="reset_type" value="time_slots" id="reset-time-slots">
+                        <label class="form-check-label" for="reset-time-slots">
+                            Reset time slot settings only
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="reset_type" value="appointments" id="reset-appointments">
+                        <label class="form-check-label" for="reset-appointments">
+                            Reset appointment settings only
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="reset_type" value="notifications" id="reset-notifications">
+                        <label class="form-check-label" for="reset-notifications">
+                            Reset notification settings only
+                        </label>
+                    </div>
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        This action cannot be undone. Current settings will be overwritten.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Reset Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Action Modal -->
+<div class="modal fade" id="bulkActionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'admin_panel:settings_bulk_action' %}" id="bulk-action-form">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Bulk Actions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="bulk-action-select" class="form-label">Action</label>
+                        {{ bulk_form.action }}
+                    </div>
+                    {{ bulk_form.selected_settings }}
+                    <div id="selected-count" class="text-muted"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Execute</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Select all functionality
+    const selectAllCheckbox = document.getElementById('select-all');
+    const settingCheckboxes = document.querySelectorAll('.setting-checkbox');
+    const bulkActionBtn = document.getElementById('bulk-action-btn');
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            settingCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateBulkActionButton();
+        });
+    }
+    
+    settingCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActionButton);
+    });
+    
+    function updateBulkActionButton() {
+        const checkedBoxes = document.querySelectorAll('.setting-checkbox:checked');
+        if (bulkActionBtn) {
+            bulkActionBtn.disabled = checkedBoxes.length === 0;
+        }
+        
+        // Update select all checkbox state
+        if (selectAllCheckbox) {
+            if (checkedBoxes.length === 0) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = false;
+            } else if (checkedBoxes.length === settingCheckboxes.length) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.indeterminate = true;
+            }
+        }
+    }
+    
+    // Bulk action modal
+    if (bulkActionBtn) {
+        bulkActionBtn.addEventListener('click', function() {
+            const checkedBoxes = document.querySelectorAll('.setting-checkbox:checked');
+            const selectedIds = Array.from(checkedBoxes).map(cb => cb.value);
+            
+            document.querySelector('#bulk-action-form input[name="selected_settings"]').value = selectedIds.join(',');
+            document.getElementById('selected-count').textContent = `${selectedIds.length} setting(s) selected`;
+            
+            new bootstrap.Modal(document.getElementById('bulkActionModal')).show();
+        });
+    }
+});
+</script>
+{% endblock %}

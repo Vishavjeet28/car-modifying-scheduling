@@ -1,0 +1,653 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Book {{ service.name }} - CarModX{% endblock %}
+
+{% block extra_css %}
+<style>
+    .slot-selection-container {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 20px 0;
+    }
+    
+    .time-slots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+    
+    .time-slot-card {
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+        position: relative;
+        min-height: 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .time-slot-card:hover:not(.disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,123,255,0.2);
+        border-color: #007bff;
+    }
+    
+    .time-slot-card.selected {
+        border-color: #007bff;
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+    }
+    
+    .time-slot-card.disabled {
+        background: #f8f9fa;
+        border-color: #dee2e6;
+        color: #6c757d;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    
+    .time-slot-card .time-label {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+    
+    .time-slot-card .status-label {
+        font-size: 0.85rem;
+        opacity: 0.8;
+    }
+    
+    .time-slot-card.disabled .status-label {
+        color: #dc3545;
+        font-weight: 500;
+    }
+    
+    .time-slot-card.selected .status-label {
+        color: rgba(255,255,255,0.9);
+    }
+    
+    .slot-loading {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+    
+    .date-selection-info {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .booking-summary {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+    
+    .form-section {
+        background: white;
+        border-radius: 10px;
+        padding: 25px;
+        margin-bottom: 20px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .section-title {
+        color: #495057;
+        font-weight: 600;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .alert-info-custom {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <!-- Service Information Header -->
+            <div class="form-section">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h3 class="mb-2">
+                            <i class="fas fa-calendar-plus text-primary"></i> 
+                            Book {{ service.name }}
+                        </h3>
+                        <p class="text-muted mb-3">{{ service.description }}</p>
+                        <div class="d-flex align-items-center flex-wrap">
+                            <span class="badge bg-primary me-2 mb-2">{{ service.category.name }}</span>
+                            <span class="text-muted me-3 mb-2">
+                                <i class="fas fa-clock"></i> {{ service.duration_hours|floatformat:1 }} hours
+                            </span>
+                            <span class="h5 text-success mb-2">
+                                <i class="fas fa-rupee-sign"></i> ₹{{ service.base_price }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        {% if service.image %}
+                        <img src="{{ service.image.url }}" alt="{{ service.name }}" 
+                             class="img-fluid rounded shadow" style="max-height: 120px;">
+                        {% else %}
+                        <div class="bg-light rounded d-flex align-items-center justify-content-center shadow" 
+                             style="height: 120px; width: 120px; margin: 0 auto;">
+                            <i class="{{ service.category.icon|default:'fas fa-cog' }} fa-3x text-muted"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Booking Form -->
+            <form method="post" id="booking-form">
+                {% csrf_token %}
+                
+                <!-- Date and Time Selection -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-calendar-alt text-primary"></i> Select Date & Time
+                    </h5>
+                    
+                    <!-- Date Selection -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="id_slot_date" class="form-label fw-bold">
+                                <i class="fas fa-calendar"></i> Appointment Date
+                            </label>
+                            {{ form.slot_date }}
+                            <small class="form-text text-muted">Select a date to see available time slots</small>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="date-selection-info" id="date-info" style="display: none;">
+                                <h6 class="mb-2"><i class="fas fa-info-circle text-info"></i> Selected Date</h6>
+                                <p class="mb-0" id="selected-date-display"></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Time Slot Selection -->
+                    <div class="slot-selection-container" id="slot-container" style="display: none;">
+                        <h6 class="mb-3">
+                            <i class="fas fa-clock text-primary"></i> Available Time Slots
+                        </h6>
+                        
+                        <div id="slot-loading" class="slot-loading">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading available time slots...</p>
+                        </div>
+                        
+                        <div id="slots-grid" class="time-slots-grid" style="display: none;"></div>
+                        
+                        <div id="no-slots-message" class="text-center py-4" style="display: none;">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No Available Slots</h6>
+                            <p class="text-muted">All time slots are occupied for this date. Please select another date.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden time input for form submission -->
+                    <input type="hidden" name="slot_time" id="id_slot_time" value="">
+                    
+                    <!-- Debug Panel (remove in production) -->
+                    <div id="debug-panel" style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 10px; margin-top: 10px; font-family: monospace; font-size: 12px; display: none;">
+                        <strong>🔍 Debug Info:</strong><br>
+                        <span id="debug-selectedSlot">Selected Slot: null</span><br>
+                        <span id="debug-hiddenInput">Hidden Input: ""</span><br>
+                        <span id="debug-dateInput">Date Input: ""</span><br>
+                        <button type="button" onclick="toggleDebugInfo()" style="margin-top: 5px; font-size: 11px;">Toggle Debug</button>
+                        <button type="button" onclick="bypassValidation()" style="margin-top: 5px; margin-left: 5px; font-size: 11px; background: #dc3545; color: white; border: none; padding: 2px 5px;">Bypass & Submit</button>
+                    </div>
+                </div>
+                
+                <!-- Vehicle Information -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-car text-primary"></i> Vehicle Information
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_vehicle_make" class="form-label fw-bold">Vehicle Make</label>
+                            {{ form.vehicle_make }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_vehicle_model" class="form-label fw-bold">Vehicle Model</label>
+                            {{ form.vehicle_model }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_vehicle_year" class="form-label fw-bold">Vehicle Year</label>
+                            {{ form.vehicle_year }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_vehicle_license" class="form-label fw-bold">License Plate</label>
+                            {{ form.vehicle_license }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Service Selection (Hidden) -->
+                {{ form.selected_service.as_hidden }}
+                
+                <!-- Special Requirements -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-clipboard-list text-primary"></i> Additional Information
+                    </h5>
+                    <label for="id_special_requirements" class="form-label fw-bold">Special Requirements (Optional)</label>
+                    {{ form.special_requirements }}
+                    <small class="form-text text-muted">Any specific requirements or notes for the service</small>
+                </div>
+                
+                <!-- Booking Summary -->
+                <div id="booking-summary" class="booking-summary" style="display: none;">
+                    <h5 class="mb-3">
+                        <i class="fas fa-check-circle"></i> Booking Summary
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Service:</strong> {{ service.name }}</p>
+                            <p class="mb-1"><strong>Date:</strong> <span id="summary-date"></span></p>
+                            <p class="mb-1"><strong>Time:</strong> <span id="summary-time"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Duration:</strong> {{ service.duration_hours|floatformat:1 }} hours</p>
+                            <p class="mb-1"><strong>Price:</strong> ₹{{ service.base_price }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <a href="{% url 'services:service_detail' service.id %}" class="btn btn-outline-secondary btn-lg me-md-2">
+                        <i class="fas fa-arrow-left"></i> Back to Service
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg" id="book-btn" disabled>
+                        <i class="fas fa-calendar-plus"></i> Confirm Booking
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎯 New Slot Interface JavaScript Loaded');
+    
+    // Element references
+    const form = document.getElementById('booking-form');
+    const submitBtn = document.getElementById('book-btn');
+    const dateInput = document.getElementById('id_slot_date');
+    const timeInput = document.getElementById('id_slot_time');
+    const slotContainer = document.getElementById('slot-container');
+    const slotLoading = document.getElementById('slot-loading');
+    const slotsGrid = document.getElementById('slots-grid');
+    const noSlotsMessage = document.getElementById('no-slots-message');
+    const dateInfo = document.getElementById('date-info');
+    const selectedDateDisplay = document.getElementById('selected-date-display');
+    const bookingSummary = document.getElementById('booking-summary');
+    const summaryDate = document.getElementById('summary-date');
+    const summaryTime = document.getElementById('summary-time');
+    
+    console.log('📋 Element Check:');
+    console.log('  form:', !!form);
+    console.log('  submitBtn:', !!submitBtn);
+    console.log('  dateInput:', !!dateInput);
+    console.log('  timeInput:', !!timeInput);
+    console.log('  slotContainer:', !!slotContainer);
+    
+    let selectedSlot = null;
+    
+    // Date input change handler
+    if (dateInput) {
+        dateInput.addEventListener('change', function() {
+            const selectedDate = this.value;
+            if (selectedDate) {
+                showDateInfo(selectedDate);
+                fetchAvailableSlots(selectedDate);
+            } else {
+                hideDateInfo();
+                hideSlotContainer();
+            }
+        });
+    }
+    
+    // Form submission handler
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            console.log('Form submission attempted');
+            console.log('Selected slot:', selectedSlot);
+            console.log('Hidden input value:', timeInput.value);
+            console.log('Date input value:', dateInput.value);
+            
+            // Check multiple conditions to ensure slot is properly selected
+            const hasSelectedSlot = selectedSlot && selectedSlot.time;
+            const hasTimeValue = timeInput && timeInput.value;
+            const hasDateValue = dateInput && dateInput.value;
+            
+            console.log('Validation checks:');
+            console.log('  hasSelectedSlot:', hasSelectedSlot);
+            console.log('  hasTimeValue:', hasTimeValue);
+            console.log('  hasDateValue:', hasDateValue);
+            
+            // Allow submission if either selectedSlot is set OR hidden input has value
+            if ((!hasSelectedSlot && !hasTimeValue) || !hasDateValue) {
+                e.preventDefault();
+                
+                // More specific error messages
+                if (!hasDateValue) {
+                    alert('Please select a date for your appointment.');
+                } else if (!hasSelectedSlot && !hasTimeValue) {
+                    alert('Please select a time slot before booking.');
+                }
+                
+                console.log('Form submission prevented - validation failed');
+                return;
+            }
+            
+            // If selectedSlot exists but hidden input is empty, update it
+            if (hasSelectedSlot && !hasTimeValue) {
+                timeInput.value = selectedSlot.time;
+                console.log('Updated hidden input to:', selectedSlot.time);
+            }
+            
+            console.log('Form validation passed - submitting');
+            
+            // Show loading state
+            submitBtn.innerHTML = '<span class="loading-spinner me-2"></span>Processing Booking...';
+            submitBtn.disabled = true;
+            
+            // Re-enable button after 15 seconds as fallback
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-calendar-plus"></i> Confirm Booking';
+            }, 15000);
+        });
+    }
+    
+    function showDateInfo(dateValue) {
+        const date = new Date(dateValue);
+        const options = { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        };
+        selectedDateDisplay.textContent = date.toLocaleDateString('en-US', options);
+        dateInfo.style.display = 'block';
+    }
+    
+    function hideDateInfo() {
+        dateInfo.style.display = 'none';
+    }
+    
+    function hideSlotContainer() {
+        slotContainer.style.display = 'none';
+        selectedSlot = null;
+        timeInput.value = '';
+        updateBookingSummary();
+        updateSubmitButton();
+    }
+    
+    function fetchAvailableSlots(date) {
+        // Show loading state
+        slotContainer.style.display = 'block';
+        slotLoading.style.display = 'block';
+        slotsGrid.style.display = 'none';
+        noSlotsMessage.style.display = 'none';
+        
+        console.log('Fetching slots for date:', date);
+        
+        fetch(`{% url 'appointments:available_slots_api' %}?date=${date}`)
+            .then(response => {
+                console.log('API response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('API response data:', data);
+                slotLoading.style.display = 'none';
+                displayTimeSlots(data.slots, data.all_slots);
+            })
+            .catch(error => {
+                console.error('Error fetching slots:', error);
+                slotLoading.style.display = 'none';
+                showErrorMessage();
+            });
+    }
+    
+    function displayTimeSlots(availableSlots, allSlots) {
+        console.log('Displaying slots - availableSlots:', availableSlots, 'allSlots:', allSlots);
+        slotsGrid.innerHTML = '';
+        
+        if (availableSlots.length === 0) {
+            console.log('No available slots, showing no slots message');
+            noSlotsMessage.style.display = 'block';
+            return;
+        }
+        
+        // Create slot cards for all time slots
+        allSlots.forEach(slot => {
+            const isAvailable = availableSlots.some(avail => avail.time === slot.time);
+            console.log('Creating slot card for:', slot.time, 'isAvailable:', isAvailable);
+            const slotCard = createSlotCard(slot, isAvailable);
+            slotsGrid.appendChild(slotCard);
+        });
+        
+        slotsGrid.style.display = 'grid';
+    }
+    
+    function createSlotCard(slot, isAvailable) {
+        console.log('Creating slot card:', slot, 'isAvailable:', isAvailable);
+        
+        const card = document.createElement('div');
+        card.className = `time-slot-card ${!isAvailable ? 'disabled' : ''}`;
+        card.dataset.time = slot.time;
+        card.dataset.display = slot.display;
+        
+        card.innerHTML = `
+            <div class="time-label">${slot.display}</div>
+            <div class="status-label">
+                ${isAvailable ? 'Available' : 'Occupied'}
+            </div>
+        `;
+        
+        if (isAvailable) {
+            console.log('Adding click listener to slot:', slot.time);
+            card.addEventListener('click', function() {
+                console.log('Slot card clicked:', this.dataset.time);
+                selectTimeSlot(this);
+            });
+        }
+        
+        return card;
+    }
+    
+    function selectTimeSlot(cardElement) {
+        console.log('Slot clicked:', cardElement.dataset.time, cardElement.dataset.display);
+        
+        // Remove previous selection
+        document.querySelectorAll('.time-slot-card.selected').forEach(card => {
+            card.classList.remove('selected');
+        });
+        
+        // Select new slot
+        cardElement.classList.add('selected');
+        selectedSlot = {
+            time: cardElement.dataset.time,
+            display: cardElement.dataset.display
+        };
+        
+        console.log('New selected slot:', selectedSlot);
+        
+        // Update hidden input immediately and verify
+        if (timeInput) {
+            timeInput.value = selectedSlot.time;
+            console.log('Hidden input updated to:', timeInput.value);
+            console.log('Hidden input verification:', document.getElementById('id_slot_time').value);
+        } else {
+            console.error('Time input element not found!');
+        }
+        
+        // Update booking summary
+        updateBookingSummary();
+        updateSubmitButton();
+        
+        // Add visual confirmation
+        cardElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    
+    function updateBookingSummary() {
+        if (selectedSlot && dateInput.value) {
+            const date = new Date(dateInput.value);
+            const options = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            
+            summaryDate.textContent = date.toLocaleDateString('en-US', options);
+            summaryTime.textContent = selectedSlot.display;
+            bookingSummary.style.display = 'block';
+        } else {
+            bookingSummary.style.display = 'none';
+        }
+    }
+    
+    function updateSubmitButton() {
+        console.log('Updating submit button - selectedSlot:', selectedSlot, 'dateInput.value:', dateInput.value);
+        
+        if (selectedSlot && dateInput.value && timeInput.value) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('btn-secondary');
+            submitBtn.classList.add('btn-primary');
+            submitBtn.textContent = `Confirm Booking (${selectedSlot.display})`;
+            console.log('Submit button enabled');
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.classList.remove('btn-primary');
+            submitBtn.classList.add('btn-secondary');
+            submitBtn.innerHTML = '<i class="fas fa-calendar-plus"></i> Select Time Slot';
+            console.log('Submit button disabled');
+        }
+        
+        // Update debug panel
+        updateDebugPanel();
+    }
+    
+    function updateDebugPanel() {
+        const debugPanel = document.getElementById('debug-panel');
+        const debugSelectedSlot = document.getElementById('debug-selectedSlot');
+        const debugHiddenInput = document.getElementById('debug-hiddenInput');
+        const debugDateInput = document.getElementById('debug-dateInput');
+        
+        if (debugPanel && debugSelectedSlot && debugHiddenInput && debugDateInput) {
+            debugPanel.style.display = 'block';
+            debugSelectedSlot.textContent = `Selected Slot: ${selectedSlot ? JSON.stringify(selectedSlot) : 'null'}`;
+            debugHiddenInput.textContent = `Hidden Input: "${timeInput ? timeInput.value : 'N/A'}"`;
+            debugDateInput.textContent = `Date Input: "${dateInput ? dateInput.value : 'N/A'}"`;
+        }
+    }
+    
+    // Global function for debug button
+    window.toggleDebugInfo = function() {
+        console.log('=== DEBUG INFO ===');
+        console.log('selectedSlot:', selectedSlot);
+        console.log('timeInput.value:', timeInput ? timeInput.value : 'timeInput not found');
+        console.log('dateInput.value:', dateInput ? dateInput.value : 'dateInput not found');
+        console.log('submitBtn.disabled:', submitBtn ? submitBtn.disabled : 'submitBtn not found');
+        console.log('=================');
+        
+        // Also show current form data
+        if (form) {
+            const formData = new FormData(form);
+            console.log('Current form data:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`  ${key}: ${value}`);
+            }
+        }
+    };
+    
+    // Emergency bypass for testing
+    window.bypassValidation = function() {
+        console.log('🚨 BYPASSING VALIDATION FOR TESTING');
+        
+        // Set default values if missing
+        if (!dateInput.value) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            dateInput.value = tomorrow.toISOString().split('T')[0];
+        }
+        
+        if (!timeInput.value) {
+            timeInput.value = '09:00';
+        }
+        
+        // Fill vehicle info if empty
+        const vehicleMake = document.getElementById('id_vehicle_make');
+        const vehicleModel = document.getElementById('id_vehicle_model');
+        const vehicleYear = document.getElementById('id_vehicle_year');
+        const vehicleLicense = document.getElementById('id_vehicle_license');
+        
+        if (vehicleMake && !vehicleMake.value) vehicleMake.value = 'Toyota';
+        if (vehicleModel && !vehicleModel.value) vehicleModel.value = 'Camry';
+        if (vehicleYear && !vehicleYear.value) vehicleYear.value = '2020';
+        if (vehicleLicense && !vehicleLicense.value) vehicleLicense.value = 'BYPASS-123';
+        
+        console.log('Values set - submitting form');
+        form.submit();
+    };
+    
+    function showErrorMessage() {
+        slotsGrid.innerHTML = `
+            <div class="col-12 text-center py-4">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <h6 class="text-muted">Error Loading Slots</h6>
+                <p class="text-muted">Unable to load time slots. Please try again.</p>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="location.reload()">
+                    <i class="fas fa-refresh"></i> Retry
+                </button>
+            </div>
+        `;
+        slotsGrid.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

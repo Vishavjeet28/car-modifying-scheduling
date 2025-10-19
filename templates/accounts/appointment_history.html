@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Appointment History - CarModX{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-5 fw-bold">Appointment History</h1>
+                <a href="{% url 'services:service_list' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Book New Service
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    {% if appointments %}
+    <div class="row">
+        {% for appointment in appointments %}
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Appointment #{{ appointment.id }}</h5>
+                    <span class="badge bg-{% if appointment.status == 'confirmed' %}success{% elif appointment.status == 'pending' %}warning{% elif appointment.status == 'completed' %}info{% elif appointment.status == 'cancelled' %}danger{% else %}secondary{% endif %}">
+                        {{ appointment.get_status_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <h6 class="card-title">{{ appointment.service.name }}</h6>
+                    <p class="card-text text-muted">{{ appointment.service.description|truncatewords:15 }}</p>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar"></i> {{ appointment.time_slot.date|date:"M d, Y" }}
+                            </small>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-clock"></i> {{ appointment.time_slot.start_time|time:"g:i A" }}
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-car"></i> {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}
+                            </small>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-rupee-sign"></i> ₹{{ appointment.estimated_price }}
+                            </small>
+                        </div>
+                    </div>
+                    
+                    {% if appointment.employee %}
+                    <p class="mb-3">
+                        <small class="text-muted">
+                            <i class="fas fa-user"></i> Assigned to: {{ appointment.employee.user.get_full_name }}
+                        </small>
+                    </p>
+                    {% endif %}
+                    
+                    <div class="d-grid">
+                        <a href="{% url 'appointments:appointment_detail' appointment.id %}" class="btn btn-outline-primary">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer text-muted">
+                    <small>
+                        <i class="fas fa-calendar-plus"></i> Created {{ appointment.created_at|date:"M d, Y g:i A" }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+            <h3>No Appointments Found</h3>
+            <p class="text-muted">You haven't booked any appointments yet.</p>
+            <a href="{% url 'services:service_list' %}" class="btn btn-primary">
+                <i class="fas fa-calendar-plus"></i> Book Your First Service
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

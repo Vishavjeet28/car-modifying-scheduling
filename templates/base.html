@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CarModX - Car Modification Store{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{% load static %}{% static 'css/style.css' %}" rel="stylesheet">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <i class="fas fa-car"></i> CarModX
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home' %}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'services:service_list' %}">Services</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'about' %}">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'contact' %}">Contact</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'ai_agent:chat' %}" title="Coming Soon">
+                            <i class="fas fa-robot"></i> AI Assistant 
+                            <small class="badge bg-warning text-dark ms-1">Beta</small>
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user"></i> {{ user.get_full_name|default:user.username }}
+                            </a>
+                            <ul class="dropdown-menu">
+                                {% if user.is_superuser %}
+                                <li><a class="dropdown-item" href="{% url 'admin_panel:dashboard' %}">
+                                    <i class="fas fa-cogs"></i> Super Admin Panel
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                {% endif %}
+                                {% if user.is_admin %}
+                                <li><a class="dropdown-item" href="{% url 'accounts:admin_dashboard' %}">
+                                    <i class="fas fa-crown"></i> Admin Dashboard
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'appointments:slot_occupancy' %}">
+                                    <i class="fas fa-chart-bar"></i> Workshop Capacity
+                                </a></li>
+                                {% elif user.is_employee %}
+                                <li><a class="dropdown-item" href="{% url 'accounts:employee_dashboard' %}">
+                                    <i class="fas fa-tools"></i> Employee Dashboard
+                                </a></li>
+                                {% else %}
+                                <li><a class="dropdown-item" href="{% url 'accounts:dashboard' %}">
+                                    <i class="fas fa-tachometer-alt"></i> Customer Dashboard
+                                </a></li>
+                                {% endif %}
+                                <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
+                                    <i class="fas fa-user-edit"></i> Profile
+                                </a></li>
+                                {% if user.is_customer %}
+                                <li><a class="dropdown-item" href="{% url 'accounts:appointment_history' %}">
+                                    <i class="fas fa-history"></i> Appointment History
+                                </a></li>
+                                {% endif %}
+                                {% if user.is_employee %}
+                                <li><a class="dropdown-item" href="{% url 'accounts:employee_dashboard' %}">
+                                    <i class="fas fa-tools"></i> Employee Dashboard
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'appointments:appointment_list' %}">
+                                    <i class="fas fa-calendar-alt"></i> Appointments
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'appointments:slot_occupancy' %}">
+                                    <i class="fas fa-chart-bar"></i> Workshop Capacity
+                                </a></li>
+                                {% endif %}
+                                {% if user.is_admin %}
+                                <li><a class="dropdown-item" href="/admin/">
+                                    <i class="fas fa-cog"></i> Django Admin
+                                </a></li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">
+                                    <i class="fas fa-sign-out-alt"></i> Logout
+                                </a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'accounts:login' %}">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'accounts:register' %}">
+                                <i class="fas fa-user-plus"></i> Register
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="container mt-5 pt-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="{% block main_class %}{% endblock %}">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Admin Quick Actions Widget -->
+    {% load admin_extras %}
+    {% admin_quick_actions_widget %}
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5><i class="fas fa-car"></i> CarModX</h5>
+                    <p>Your trusted partner for car modifications and enhancements.</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'services:service_list' %}" class="text-light">Services</a></li>
+                        <li><a href="{% url 'about' %}" class="text-light">About Us</a></li>
+                        <li><a href="{% url 'contact' %}" class="text-light">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h5>Contact Info</h5>
+                    <p><i class="fas fa-phone"></i> +91 98765 43210</p>
+                    <p><i class="fas fa-envelope"></i> info@carmodx.com</p>
+                    <p><i class="fas fa-map-marker-alt"></i> 123 Auto Street, City, State 12345</p>
+                </div>
+            </div>
+            <hr>
+            <div class="text-center">
+                <p>&copy; 2024 CarModX. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{% load static %}{% static 'js/main.js' %}?v=2.0"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

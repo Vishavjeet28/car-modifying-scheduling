@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Update Appointment #{{ appointment.id }} - CarModX{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0"><i class="fas fa-edit"></i> Update Appointment #{{ appointment.id }}</h3>
+                    <span class="badge bg-{% if appointment.status == 'confirmed' %}success{% elif appointment.status == 'pending' %}warning{% elif appointment.status == 'in_progress' %}info{% elif appointment.status == 'completed' %}primary{% else %}secondary{% endif %} fs-6">
+                        {{ appointment.get_status_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <!-- Appointment Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-info-circle"></i> Appointment Details</h5>
+                            <p><strong>Service:</strong> {{ appointment.service.name }}</p>
+                            <p><strong>Customer:</strong> {{ appointment.customer.get_full_name }}</p>
+                            <p><strong>Date:</strong> {{ appointment.time_slot.date|date:"F d, Y" }}</p>
+                            <p><strong>Time:</strong> {{ appointment.time_slot.start_time|time:"g:i A" }} - {{ appointment.time_slot.end_time|time:"g:i A" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-car"></i> Vehicle Information</h5>
+                            <p><strong>Vehicle:</strong> {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}</p>
+                            <p><strong>Year:</strong> {{ appointment.vehicle_year }}</p>
+                            <p><strong>License:</strong> {{ appointment.vehicle_license }}</p>
+                            <p><strong>Estimated Price:</strong> ₹{{ appointment.estimated_price }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if appointment.special_requirements %}
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Special Requirements</h6>
+                        <p class="mb-0">{{ appointment.special_requirements }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if appointment.customer_notes %}
+                    <div class="alert alert-light">
+                        <h6><i class="fas fa-sticky-note"></i> Customer Notes</h6>
+                        <p class="mb-0">{{ appointment.customer_notes }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <!-- Update Form -->
+                    <form method="post" id="update-form">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="{% url 'appointments:appointment_detail' appointment.id %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> Back to Details
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg" id="update-btn">
+                                <i class="fas fa-save"></i> Update Appointment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Appointment History -->
+            {% if appointment.history.all %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Appointment History</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for entry in appointment.history.all %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ entry.action|title }}</h6>
+                                    <p class="mb-1">{{ entry.notes }}</p>
+                                    <small class="text-muted">by {{ entry.changed_by.username }}</small>
+                                </div>
+                                <small class="text-muted">{{ entry.timestamp|date:"M d, Y g:i A" }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('update-form');
+    const submitBtn = document.getElementById('update-btn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            // Show loading state
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Updating...';
+            submitBtn.disabled = true;
+            
+            // Re-enable button after 15 seconds as fallback
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Appointment';
+            }, 15000);
+        });
+    }
+    
+    // Auto-save functionality for notes
+    const notesField = document.getElementById('id_employee_notes');
+    if (notesField) {
+        let saveTimeout;
+        notesField.addEventListener('input', function() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                // Auto-save notes (could be implemented with AJAX)
+                console.log('Auto-saving notes...');
+            }, 2000);
+        });
+    }
+});
+</script>
+{% endblock %}

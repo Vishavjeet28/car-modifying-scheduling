@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Appointments - CarModX{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Appointments</h2>
+        <a href="{% url 'appointments:book_appointment' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Book New Appointment
+        </a>
+    </div>
+
+    {% if appointments %}
+        <div class="row">
+            {% for appointment in appointments %}
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Appointment #{{ appointment.id }}</h6>
+                            <span class="badge 
+                                {% if appointment.status == 'booked' %}badge-success
+                                {% elif appointment.status == 'cancelled' %}badge-danger
+                                {% elif appointment.status == 'completed' %}badge-primary
+                                {% endif %}">
+                                {{ appointment.get_status_display }}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-title">{{ appointment.selected_service.name }}</h6>
+                            <p class="card-text">
+                                <strong>Date:</strong> {{ appointment.slot_date|date:"F d, Y" }}<br>
+                                <strong>Time:</strong> {{ appointment.get_slot_time_display }}<br>
+                                <strong>Vehicle:</strong> {{ appointment.vehicle_year }} {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}<br>
+                                <strong>License:</strong> {{ appointment.vehicle_license }}<br>
+                                <strong>Price:</strong> <span class="text-success fw-bold">₹{{ appointment.selected_service.base_price|floatformat:2 }}</span>
+                            </p>
+                            {% if appointment.special_requirements %}
+                                <p class="card-text">
+                                    <strong>Special Requirements:</strong><br>
+                                    <small class="text-muted">{{ appointment.special_requirements }}</small>
+                                </p>
+                            {% endif %}
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'appointments:appointment_detail' appointment.id %}" class="btn btn-sm btn-outline-primary">
+                                    View Details
+                                </a>
+                                {% if appointment.status == 'booked' and appointment.slot_date >= today %}
+                                    <a href="{% url 'appointments:cancel_appointment' appointment.id %}" class="btn btn-sm btn-outline-danger">
+                                        Cancel
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-footer text-muted">
+                            <small>Booked on {{ appointment.created_at|date:"M d, Y" }}</small>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if appointments.has_other_pages %}
+            <nav aria-label="Appointments pagination">
+                <ul class="pagination justify-content-center">
+                    {% if appointments.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ appointments.previous_page_number }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in appointments.paginator.page_range %}
+                        {% if appointments.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > appointments.number|add:'-3' and num < appointments.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if appointments.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ appointments.next_page_number }}">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+            <h4>No Appointments Yet</h4>
+            <p class="text-muted">You haven't booked any appointments yet.</p>
+            <a href="{% url 'appointments:book_appointment' %}" class="btn btn-primary">
+                Book Your First Appointment
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

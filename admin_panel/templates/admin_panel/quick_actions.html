@@ -1,0 +1,66 @@
+{% if show_widget and quick_actions %}
+<div class="admin-quick-actions position-fixed" style="
+    {% if position == 'top-right' %}
+        top: 80px; right: 20px;
+    {% elif position == 'bottom-right' %}
+        bottom: 20px; right: 20px;
+    {% elif position == 'top-left' %}
+        top: 80px; left: 20px;
+    {% else %}
+        bottom: 20px; left: 20px;
+    {% endif %}
+    z-index: 1050;
+">
+    <div class="dropdown">
+        <button class="btn btn-primary btn-sm dropdown-toggle shadow" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-cogs me-1"></i>
+            Admin Actions
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><h6 class="dropdown-header">Quick Actions</h6></li>
+            {% for action in quick_actions %}
+            <li>
+                <a class="dropdown-item" href="{{ action.url }}">
+                    <i class="{{ action.icon }} me-2"></i>{{ action.name }}
+                </a>
+            </li>
+            {% endfor %}
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item" href="{% url 'admin_panel:dashboard' %}">
+                    <i class="fas fa-tachometer-alt me-2"></i>Admin Dashboard
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<style>
+.admin-quick-actions .btn {
+    border-radius: 20px;
+    font-size: 0.875rem;
+}
+
+.admin-quick-actions .dropdown-menu {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.admin-quick-actions .dropdown-item {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+.admin-quick-actions .dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.admin-quick-actions .dropdown-header {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+</style>
+{% endif %}

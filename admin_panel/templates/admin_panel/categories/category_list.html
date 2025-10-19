@@ -1,0 +1,484 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Category Management - Admin Panel{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item active">Categories</li>
+{% endblock %}
+
+{% block page_title %}Category Management{% endblock %}
+
+{% block page_actions %}
+    <a href="{% url 'admin_panel:category_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-2"></i>Add Category
+    </a>
+{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Total Categories</h5>
+                        <h3 class="mb-0">{{ total_categories }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-tags fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Active Categories</h5>
+                        <h3 class="mb-0">{{ active_categories }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-check-circle fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Inactive Categories</h5>
+                        <h3 class="mb-0">{{ inactive_categories }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-x-circle fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter Form -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-search me-2"></i>Search & Filter
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3" id="search-form">
+            <div class="col-md-6">
+                {{ search_form.search }}
+            </div>
+            <div class="col-md-4">
+                {{ search_form.status }}
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Actions -->
+<div class="card mb-4" id="bulk-actions-card" style="display: none;">
+    <div class="card-body">
+        <form method="post" action="{% url 'admin_panel:category_bulk_action' %}" id="bulk-action-form">
+            {% csrf_token %}
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="{{ bulk_form.action.id_for_label }}" class="form-label">Bulk Action</label>
+                    {{ bulk_form.action }}
+                </div>
+                <div class="col-md-4">
+                    {{ bulk_form.selected_categories }}
+                    <button type="submit" class="btn btn-warning" id="apply-bulk-action">
+                        <i class="bi bi-lightning me-2"></i>Apply Action
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="cancel-bulk-action">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Categories Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-list me-2"></i>Categories List
+        </h5>
+        <div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="select-all-btn">
+                <i class="bi bi-check-all me-1"></i>Select All
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-selection-btn" style="display: none;">
+                <i class="bi bi-x me-1"></i>Clear Selection
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if categories %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="50">
+                                <input type="checkbox" class="form-check-input" id="select-all-checkbox">
+                            </th>
+                            <th width="80">Icon</th>
+                            <th>Category Name</th>
+                            <th>Description</th>
+                            <th width="120">Service Count</th>
+                            <th width="100">Status</th>
+                            <th width="150">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="form-check-input category-checkbox" value="{{ category.id }}">
+                            </td>
+                            <td>
+                                {% if category.icon %}
+                                    <div class="text-center">
+                                        <i class="{{ category.icon }} fs-3 text-primary"></i>
+                                    </div>
+                                {% else %}
+                                    <div class="bg-light d-flex align-items-center justify-content-center" 
+                                         style="width: 50px; height: 50px; border-radius: 0.375rem;">
+                                        <i class="bi bi-tag text-muted"></i>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>
+                                    <strong>{{ category.name }}</strong>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-muted">
+                                    {{ category.description|truncatechars:80|default:"No description" }}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <span class="badge bg-info fs-6">{{ category.service_count }}</span>
+                                    {% if category.service_count > 0 %}
+                                        <br>
+                                        <small class="text-muted">services</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if category.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-info" 
+                                            onclick="viewCategoryDetails({{ category.id }})"
+                                            title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <a href="{% url 'admin_panel:category_update' category.id %}" 
+                                       class="btn btn-outline-primary" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger" 
+                                            onclick="confirmDelete({{ category.id }}, '{{ category.name|escapejs }}', {{ category.service_count }})"
+                                            title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-tags display-1 text-muted"></i>
+                <h4 class="mt-3">No Categories Found</h4>
+                <p class="text-muted">No categories match your current filters.</p>
+                <a href="{% url 'admin_panel:category_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Create First Category
+                </a>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="card-footer">
+        <nav aria-label="Categories pagination">
+            <ul class="pagination justify-content-center mb-0">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page=1">First</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.paginator.num_pages }}">Last</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Category Details Modal -->
+<div class="modal fade" id="categoryDetailsModal" tabindex="-1" aria-labelledby="categoryDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="categoryDetailsModalLabel">Category Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="categoryDetailsContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the category "<span id="deleteCategoryName"></span>"?</p>
+                <div id="serviceWarning" style="display: none;">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> This category has <span id="serviceCount"></span> associated service(s). 
+                        You must move or delete these services before deleting the category.
+                    </div>
+                </div>
+                <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="#" class="btn btn-danger" id="confirmDeleteBtn">Delete Category</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Handle select all checkbox
+    $('#select-all-checkbox').change(function() {
+        $('.category-checkbox').prop('checked', this.checked);
+        updateBulkActions();
+    });
+    
+    // Handle individual checkboxes
+    $('.category-checkbox').change(function() {
+        updateBulkActions();
+        
+        // Update select all checkbox
+        const totalCheckboxes = $('.category-checkbox').length;
+        const checkedCheckboxes = $('.category-checkbox:checked').length;
+        $('#select-all-checkbox').prop('checked', totalCheckboxes === checkedCheckboxes);
+    });
+    
+    // Select all button
+    $('#select-all-btn').click(function() {
+        $('.category-checkbox').prop('checked', true);
+        $('#select-all-checkbox').prop('checked', true);
+        updateBulkActions();
+    });
+    
+    // Clear selection button
+    $('#clear-selection-btn').click(function() {
+        $('.category-checkbox').prop('checked', false);
+        $('#select-all-checkbox').prop('checked', false);
+        updateBulkActions();
+    });
+    
+    // Cancel bulk action
+    $('#cancel-bulk-action').click(function() {
+        $('.category-checkbox').prop('checked', false);
+        $('#select-all-checkbox').prop('checked', false);
+        updateBulkActions();
+    });
+    
+    // Handle bulk action form submission
+    $('#bulk-action-form').submit(function(e) {
+        const selectedCategories = $('.category-checkbox:checked').map(function() {
+            return this.value;
+        }).get();
+        
+        if (selectedCategories.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one category.');
+            return false;
+        }
+        
+        $('#selected_categories').val(selectedCategories.join(','));
+        
+        const action = $('#bulk-action-select').val();
+        if (action === 'delete') {
+            if (!confirm('Are you sure you want to delete the selected categories? This action cannot be undone.')) {
+                e.preventDefault();
+                return false;
+            }
+        }
+    });
+});
+
+function updateBulkActions() {
+    const checkedCount = $('.category-checkbox:checked').length;
+    
+    if (checkedCount > 0) {
+        $('#bulk-actions-card').show();
+        $('#select-all-btn').hide();
+        $('#clear-selection-btn').show();
+    } else {
+        $('#bulk-actions-card').hide();
+        $('#select-all-btn').show();
+        $('#clear-selection-btn').hide();
+    }
+}
+
+function viewCategoryDetails(categoryId) {
+    $('#categoryDetailsModal').modal('show');
+    
+    $.ajax({
+        url: `/admin/categories/${categoryId}/detail/`,
+        method: 'GET',
+        success: function(response) {
+            if (response.success) {
+                const category = response.category;
+                let content = `
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            ${category.icon ? 
+                                `<i class="${category.icon}" style="font-size: 4rem; color: #0d6efd;"></i>` :
+                                `<div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 120px;">
+                                    <i class="bi bi-tag fs-1 text-muted"></i>
+                                </div>`
+                            }
+                        </div>
+                        <div class="col-md-9">
+                            <h4>${category.name}</h4>
+                            <p class="text-muted">${category.description || 'No description provided'}</p>
+                            
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <strong>Status:</strong> ${category.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}<br>
+                                    <strong>Total Services:</strong> ${category.service_count}<br>
+                                    <strong>Active Services:</strong> ${category.active_service_count}<br>
+                                    <strong>Appointments:</strong> ${category.appointment_count}
+                                </div>
+                                <div class="col-sm-6">
+                                    <strong>Created:</strong> ${new Date(category.created_at).toLocaleDateString()}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                if (category.services.length > 0) {
+                    content += `
+                        <hr>
+                        <h5>Recent Services (${category.service_count > 10 ? 'showing 10 of ' + category.service_count : category.service_count})</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Service Name</th>
+                                        <th>Base Price</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    category.services.forEach(service => {
+                        content += `
+                            <tr>
+                                <td>${service.name}</td>
+                                <td>₹${service.base_price}</td>
+                                <td>${service.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    content += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+                
+                $('#categoryDetailsContent').html(content);
+            } else {
+                $('#categoryDetailsContent').html('<div class="alert alert-danger">Error loading category details.</div>');
+            }
+        },
+        error: function() {
+            $('#categoryDetailsContent').html('<div class="alert alert-danger">Error loading category details.</div>');
+        }
+    });
+}
+
+function confirmDelete(categoryId, categoryName, serviceCount) {
+    $('#deleteCategoryName').text(categoryName);
+    $('#confirmDeleteBtn').attr('href', `/admin/categories/${categoryId}/delete/`);
+    
+    if (serviceCount > 0) {
+        $('#serviceCount').text(serviceCount);
+        $('#serviceWarning').show();
+        $('#confirmDeleteBtn').addClass('disabled').text('Cannot Delete');
+    } else {
+        $('#serviceWarning').hide();
+        $('#confirmDeleteBtn').removeClass('disabled').text('Delete Category');
+    }
+    
+    $('#deleteConfirmModal').modal('show');
+}
+</script>
+{% endblock %}

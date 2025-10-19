@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Book Appointment - CarModX{% endblock %}
+
+{% block extra_css %}
+<style>
+    .slot-info {
+        font-size: 0.9em;
+        color: #6c757d;
+    }
+    .slot-full {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .slot-available {
+        color: #28a745;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Book an Appointment</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="appointment-form">
+                        {% csrf_token %}
+                        
+                        <div class="form-group mb-3">
+                            <label for="{{ form.selected_service.id_for_label }}" class="form-label">Service *</label>
+                            {{ form.selected_service }}
+                            {% if form.selected_service.errors %}
+                                <div class="text-danger">{{ form.selected_service.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.slot_date.id_for_label }}" class="form-label">Date *</label>
+                                    {{ form.slot_date }}
+                                    {% if form.slot_date.errors %}
+                                        <div class="text-danger">{{ form.slot_date.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">{{ form.slot_date.help_text }}</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.slot_time.id_for_label }}" class="form-label">Time Slot *</label>
+                                    {{ form.slot_time }}
+                                    {% if form.slot_time.errors %}
+                                        <div class="text-danger">{{ form.slot_time.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">{{ form.slot_time.help_text }}</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h5>Vehicle Information</h5>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.vehicle_make.id_for_label }}" class="form-label">Vehicle Make *</label>
+                                    {{ form.vehicle_make }}
+                                    {% if form.vehicle_make.errors %}
+                                        <div class="text-danger">{{ form.vehicle_make.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.vehicle_model.id_for_label }}" class="form-label">Vehicle Model *</label>
+                                    {{ form.vehicle_model }}
+                                    {% if form.vehicle_model.errors %}
+                                        <div class="text-danger">{{ form.vehicle_model.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.vehicle_year.id_for_label }}" class="form-label">Vehicle Year *</label>
+                                    {{ form.vehicle_year }}
+                                    {% if form.vehicle_year.errors %}
+                                        <div class="text-danger">{{ form.vehicle_year.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="{{ form.vehicle_license.id_for_label }}" class="form-label">License Plate *</label>
+                                    {{ form.vehicle_license }}
+                                    {% if form.vehicle_license.errors %}
+                                        <div class="text-danger">{{ form.vehicle_license.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="{{ form.special_requirements.id_for_label }}" class="form-label">Special Requirements</label>
+                            {{ form.special_requirements }}
+                            {% if form.special_requirements.errors %}
+                                <div class="text-danger">{{ form.special_requirements.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">Book Appointment</button>
+                            <a href="{% url 'services:service_list' %}" class="btn btn-secondary">Back to Services</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('id_slot_date');
+    const timeSelect = document.getElementById('slot-time-select');
+    
+    dateInput.addEventListener('change', function() {
+        const selectedDate = this.value;
+        if (selectedDate) {
+            fetchAvailableSlots(selectedDate);
+        }
+    });
+    
+    function fetchAvailableSlots(date) {
+        fetch(`{% url 'appointments:available_slots_api' %}?date=${date}`)
+            .then(response => response.json())
+            .then(data => {
+                updateTimeSlotOptions(data.slots);
+            })
+            .catch(error => {
+                console.error('Error fetching slots:', error);
+            });
+    }
+    
+    function updateTimeSlotOptions(slots) {
+        // Clear existing options except the first one
+        timeSelect.innerHTML = '<option value="">Select a time slot</option>';
+        
+        slots.forEach(slot => {
+            const option = document.createElement('option');
+            option.value = slot.time;
+            option.textContent = `${slot.display} (${slot.remaining} slots available)`;
+            timeSelect.appendChild(option);
+        });
+        
+        if (slots.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No available slots for this date';
+            option.disabled = true;
+            timeSelect.appendChild(option);
+        }
+    }
+});
+</script>
+{% endblock %}

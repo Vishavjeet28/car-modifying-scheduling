@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+
+{% block title %}Employee Dashboard - CarModX{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold mb-1">Employee Dashboard</h1>
+                    <p class="text-muted mb-0">Welcome back, {{ employee.user.get_full_name }}!</p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-primary fs-6">{{ employee.specialization }}</span>
+                    <p class="text-muted mb-0">Employee ID: {{ employee.employee_id }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Work Statistics -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-user-check fa-2x mb-2"></i>
+                    <h3>{{ my_active_work }}</h3>
+                    <p class="mb-0">My Active Work</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <h3>{{ my_completed_today }}</h3>
+                    <p class="mb-0">Completed Today</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-danger text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <h3>{{ urgent_work }}</h3>
+                    <p class="mb-0">Urgent Work</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-hand-paper fa-2x mb-2"></i>
+                    <h3>{{ total_available }}</h3>
+                    <p class="mb-0">Available to Pick</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- My Assigned Work -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-user-check"></i> My Assigned Work</h5>
+                    <span class="badge bg-primary">{{ my_assigned_work.count }}</span>
+                </div>
+                <div class="card-body">
+                    {% if my_assigned_work %}
+                        <div class="list-group list-group-flush">
+                            {% for appointment in my_assigned_work %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="mb-1">{{ appointment.selected_service.name }}</h6>
+                                            <div>
+                                                <span class="badge bg-{{ appointment.get_status_color }}">
+                                                    {{ appointment.get_status_display }}
+                                                </span>
+                                                <span class="badge bg-{{ appointment.get_priority_color }} ms-1">
+                                                    {{ appointment.get_priority_display }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <p class="mb-1 text-muted">
+                                            <i class="fas fa-calendar"></i> {{ appointment.slot_date|date:"M d" }}
+                                            <i class="fas fa-clock ms-2"></i> {{ appointment.get_slot_time_display }}
+                                        </p>
+                                        <p class="mb-1">
+                                            <strong>Customer:</strong> {{ appointment.customer.get_full_name|default:appointment.customer.username }}<br>
+                                            <strong>Vehicle:</strong> {{ appointment.vehicle_year }} {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}<br>
+                                            <strong>Price:</strong> <span class="text-success">₹{{ appointment.selected_service.base_price }}</span>
+                                        </p>
+                                        {% if appointment.work_started_at %}
+                                        <p class="mb-1">
+                                            <small class="text-info"><i class="fas fa-play"></i> Started: {{ appointment.work_started_at|date:"M d, H:i" }}</small>
+                                        </p>
+                                        {% endif %}
+                                        <div class="mt-2">
+                                            <a href="{% url 'appointments:update_status' appointment.id %}" class="btn btn-sm btn-success">
+                                                <i class="fas fa-tools"></i> Manage Work
+                                            </a>
+                                            <a href="{% url 'appointments:appointment_detail' appointment.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i> Details
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                            <h6>No work assigned to you</h6>
+                            <p class="text-muted">Check available work to pick up new tasks!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Work to Pick Up -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-hand-paper"></i> Available Work</h5>
+                    <span class="badge bg-info">{{ available_work.count }}</span>
+                </div>
+                <div class="card-body">
+                    {% if available_work %}
+                        <div class="list-group list-group-flush">
+                            {% for appointment in available_work|slice:":5" %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="mb-1">{{ appointment.selected_service.name }}</h6>
+                                            <span class="badge bg-{{ appointment.get_priority_color }}">
+                                                {{ appointment.get_priority_display }}
+                                            </span>
+                                        </div>
+                                        <p class="mb-1 text-muted">
+                                            <i class="fas fa-calendar"></i> {{ appointment.slot_date|date:"M d, Y" }}
+                                            <i class="fas fa-clock ms-2"></i> {{ appointment.get_slot_time_display }}
+                                        </p>
+                                        <p class="mb-1">
+                                            <strong>Vehicle:</strong> {{ appointment.vehicle_year }} {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}<br>
+                                            <strong>Price:</strong> <span class="text-success">₹{{ appointment.selected_service.base_price }}</span>
+                                        </p>
+                                        <div class="mt-2">
+                                            <a href="{% url 'appointments:update_status' appointment.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-hand-paper"></i> Pick Up Work
+                                            </a>
+                                            <a href="{% url 'appointments:appointment_detail' appointment.id %}" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-eye"></i> Details
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if available_work.count > 5 %}
+                            <div class="text-center mt-3">
+                                <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary btn-sm">
+                                    View All Available Work
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h6>No available work</h6>
+                            <p class="text-muted">All work is currently assigned!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Upcoming Work -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Upcoming Work (Next 7 Days)</h5>
+                    <span class="badge bg-info">{{ upcoming_work.count }}</span>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_work %}
+                        <div class="list-group list-group-flush">
+                            {% for appointment in upcoming_work|slice:":5" %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="mb-1">{{ appointment.selected_service.name }}</h6>
+                                            <small class="text-muted">{{ appointment.slot_date|date:"M d" }}</small>
+                                        </div>
+                                        <p class="mb-1 text-muted">
+                                            <i class="fas fa-calendar"></i> {{ appointment.slot_date|date:"M d, Y" }}
+                                            <i class="fas fa-clock ms-3"></i> {{ appointment.get_slot_time_display }}
+                                        </p>
+                                        <p class="mb-1">
+                                            <strong>Customer:</strong> {{ appointment.customer.get_full_name|default:appointment.customer.username }}<br>
+                                            <strong>Vehicle:</strong> {{ appointment.vehicle_year }} {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if upcoming_work.count > 5 %}
+                            <div class="text-center mt-3">
+                                <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary btn-sm">
+                                    View All Upcoming Work
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar fa-3x text-muted mb-3"></i>
+                            <h6>No upcoming work</h6>
+                            <p class="text-muted">Your schedule is clear for the next week.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Completed Work -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-check-circle"></i> Recently Completed Work</h5>
+                    <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list"></i> View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if completed_work %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Customer</th>
+                                        <th>Service</th>
+                                        <th>Date & Time</th>
+                                        <th>Vehicle</th>
+                                        <th>Price</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in completed_work %}
+                                    <tr>
+                                        <td><strong>#{{ appointment.id }}</strong></td>
+                                        <td>{{ appointment.customer.get_full_name|default:appointment.customer.username }}</td>
+                                        <td>{{ appointment.selected_service.name }}</td>
+                                        <td>
+                                            {{ appointment.slot_date|date:"M d, Y" }}<br>
+                                            <small class="text-muted">{{ appointment.get_slot_time_display }}</small>
+                                        </td>
+                                        <td>{{ appointment.vehicle_year }} {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}</td>
+                                        <td><span class="text-success">₹{{ appointment.selected_service.base_price }}</span></td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'appointments:appointment_detail' appointment.id %}" 
+                                                   class="btn btn-outline-primary" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                            <h6>No completed work yet</h6>
+                            <p class="text-muted">Completed tasks will appear here.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-list"></i> View All Appointments
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'services:service_list' %}" class="btn btn-outline-info w-100">
+                                <i class="fas fa-cog"></i> View Services
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-user"></i> My Profile
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'accounts:logout' %}" class="btn btn-outline-danger w-100">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

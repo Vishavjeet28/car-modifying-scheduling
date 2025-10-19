@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Services - CarModX{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="display-4 fw-bold mb-2">Our Services</h1>
+                    <p class="lead text-muted mb-0">Professional car modification services to transform your vehicle</p>
+                </div>
+                {% if user.is_superuser %}
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-cogs me-2"></i>Admin Actions
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'admin_panel:service_list' %}">
+                            <i class="fas fa-list me-2"></i>Manage Services
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'admin_panel:service_create' %}">
+                            <i class="fas fa-plus me-2"></i>Add New Service
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'admin_panel:category_list' %}">
+                            <i class="fas fa-tags me-2"></i>Manage Categories
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'admin_panel:pricing_matrix' %}">
+                            <i class="fas fa-dollar-sign me-2"></i>Pricing Matrix
+                        </a></li>
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Search and Filter -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <form method="get" class="d-flex">
+                <input type="text" name="search" class="form-control me-2" placeholder="Search services..." value="{{ search_query }}">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+            </form>
+        </div>
+        <div class="col-md-4">
+            <select name="category" class="form-select" onchange="this.form.submit()">
+                <option value="">All Categories</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}" {% if category.id|stringformat:"s" == selected_category %}selected{% endif %}>
+                    {{ category.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    <!-- Services Grid -->
+    <div class="row">
+        {% for service in services %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm">
+                {% if service.image %}
+                <img src="{{ service.image.url }}" class="card-img-top" alt="{{ service.name }}" style="height: 200px; object-fit: cover;">
+                {% else %}
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                    <i class="{{ service.category.icon|default:'fas fa-cog' }} fa-3x text-muted"></i>
+                </div>
+                {% endif %}
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title">{{ service.name }}</h5>
+                        <span class="badge bg-primary">{{ service.category.name }}</span>
+                    </div>
+                    <p class="card-text text-muted flex-grow-1">{{ service.description|truncatewords:20 }}</p>
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="h5 text-primary mb-0">₹{{ service.base_price }}</span>
+                            <small class="text-muted">
+                                <i class="fas fa-clock"></i> {{ service.duration_hours|floatformat:1 }}h
+                            </small>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'services:service_detail' service.id %}" class="btn btn-outline-primary">
+                                View Details
+                            </a>
+                            {% if user.is_authenticated and user.is_customer %}
+                            <a href="{% url 'services:book_service' service.id %}" class="btn btn-primary">
+                                <i class="fas fa-calendar-plus"></i> Book Now
+                            </a>
+                            {% endif %}
+                            {% if user.is_superuser %}
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'admin_panel:service_update' service.id %}" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <a href="{% url 'admin_panel:pricing_matrix' %}?service={{ service.id }}" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-dollar-sign"></i> Pricing
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h3>No services found</h3>
+            <p class="text-muted">Try adjusting your search criteria or browse all categories.</p>
+            <a href="{% url 'services:service_list' %}" class="btn btn-primary">View All Services</a>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if services.has_other_pages %}
+    <nav aria-label="Services pagination" class="mt-5">
+        <ul class="pagination justify-content-center">
+            {% if services.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ services.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for num in services.paginator.page_range %}
+            {% if services.number == num %}
+            <li class="page-item active">
+                <span class="page-link">{{ num }}</span>
+            </li>
+            {% elif num > services.number|add:'-3' and num < services.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+            
+            {% if services.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ services.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}">Next</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
