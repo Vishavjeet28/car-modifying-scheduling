@@ -1,8 +1,233 @@
 {% extends 'base.html' %}
+{% load admin_extras %}
 
-{% block title %}Employee Dashboard - CarModX{% endblock %}
+{% block title %}{% if is_super_employee %}Super Employee Dashboard{% else %}Employee Dashboard{% endif %} - CarModX{% endblock %}
 
 {% block content %}
+{% if is_super_employee %}
+    <!-- SUPER EMPLOYEE DASHBOARD -->
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-users-cog text-primary"></i> Super Employee Dashboard</h2>
+                    <p class="text-muted">Manage employees, assign tasks, and monitor progress</p>
+                </div>
+                <div>
+                    <span class="badge bg-success fs-6">{{ employee.get_employee_type_display }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ total_employees }}</h3>
+                            <p class="card-text">Total Employees</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ available_employees }}</h3>
+                            <p class="card-text">Available</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ busy_employees }}</h3>
+                            <p class="card-text">Busy</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ work_completed_today }}</h3>
+                            <p class="card-text">Completed Today</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-trophy fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Management Interface -->
+    <div class="row">
+        <!-- Employee Management Panel -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-users"></i> Employee Management</h5>
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'accounts:assign_task' %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus"></i> Assign Task
+                            </a>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="location.reload()">
+                                <i class="fas fa-sync"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Employee Status Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Status</th>
+                                    <th>Active Tasks</th>
+                                    <th>Completed Today</th>
+                                    <th>Performance</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for emp_stat in employee_stats %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm rounded-circle bg-light me-3 d-flex align-items-center justify-content-center">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div>
+                                                <strong>{{ emp_stat.employee.user.get_full_name }}</strong><br>
+                                                <small class="text-muted">{{ emp_stat.employee.employee_id }} | {{ emp_stat.employee.specialization }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ emp_stat.status_color }}">
+                                            {{ emp_stat.employee.get_current_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ emp_stat.active_tasks }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">{{ emp_stat.completed_today }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <small>{{ emp_stat.employee.performance_rating|floatformat:1 }}/5.0</small>
+                                            <div class="progress ms-2" style="width: 60px; height: 10px;">
+                                                <div class="progress-bar" role="progressbar" style="width: {% widthratio emp_stat.employee.performance_rating 5 100 %}%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-outline-primary" onclick="assignTaskToEmployee({{ emp_stat.employee.id }}, '{{ emp_stat.employee.user.get_full_name }}')">
+                                                <i class="fas fa-tasks"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary" onclick="updateEmployeeStatus({{ emp_stat.employee.id }}, '{{ emp_stat.employee.user.get_full_name }}')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No employees found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Panel -->
+        <div class="col-lg-4">
+            <!-- Unassigned Work -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6><i class="fas fa-exclamation-triangle text-warning"></i> Unassigned Work ({{ unassigned_count }})</h6>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    {% for appointment in unassigned_work|slice:":5" %}
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                        <div>
+                            <small><strong>{{ appointment.selected_service.name }}</strong></small><br>
+                            <small class="text-muted">{{ appointment.slot_date }} - {{ appointment.get_slot_time_display }}</small><br>
+                            <small class="text-muted">{{ appointment.customer.get_full_name }}</small>
+                        </div>
+                        <a href="{% url 'accounts:assign_task' %}?appointment={{ appointment.id }}" class="btn btn-sm btn-primary">
+                            Assign
+                        </a>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center">No unassigned work</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Recent Assignments -->
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-history"></i> Recent Assignments</h6>
+                </div>
+                <div class="card-body" style="max-height: 250px; overflow-y: auto;">
+                    {% for assignment in my_assignments %}
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-start border-3 border-{{ assignment.get_priority_color }} bg-light">
+                        <div>
+                            <small><strong>{{ assignment.title }}</strong></small><br>
+                            <small class="text-muted">To: {{ assignment.assigned_to.user.get_full_name }}</small><br>
+                            <small>
+                                <span class="badge bg-{{ assignment.get_status_color }}">{{ assignment.get_status_display }}</span>
+                                <span class="badge bg-{{ assignment.get_priority_color }}">{{ assignment.get_priority_display }}</span>
+                            </small>
+                        </div>
+                        <a href="{% url 'accounts:task_assignment_detail' assignment.id %}" class="btn btn-sm btn-outline-primary">
+                            View
+                        </a>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center">No recent assignments</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+    <!-- REGULAR EMPLOYEE DASHBOARD -->
 <div class="container-fluid py-4">
     <!-- Header -->
     <div class="row mb-4">
@@ -13,8 +238,15 @@
                     <p class="text-muted mb-0">Welcome back, {{ employee.user.get_full_name }}!</p>
                 </div>
                 <div class="text-end">
-                    <span class="badge bg-primary fs-6">{{ employee.specialization }}</span>
+                    <span class="badge bg-{% if employee.is_super_employee %}warning{% else %}primary{% endif %} fs-6">
+                        {{ employee.get_employee_type_display }}
+                    </span>
+                    <br>
+                    <span class="badge bg-secondary fs-6">{{ employee.specialization }}</span>
                     <p class="text-muted mb-0">Employee ID: {{ employee.employee_id }}</p>
+                    <span class="badge bg-{{ employee.current_status|default:"secondary" }}">
+                        {{ employee.get_current_status_display }}
+                    </span>
                 </div>
             </div>
         </div>
@@ -27,7 +259,7 @@
                 <div class="card-body text-center">
                     <i class="fas fa-user-check fa-2x mb-2"></i>
                     <h3>{{ my_active_work }}</h3>
-                    <p class="mb-0">My Active Work</p>
+                    <p class="mb-0">Active Appointments</p>
                 </div>
             </div>
         </div>
@@ -41,20 +273,20 @@
             </div>
         </div>
         <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card bg-danger text-white h-100">
+            <div class="card bg-warning text-white h-100">
                 <div class="card-body text-center">
-                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                    <h3>{{ urgent_work }}</h3>
-                    <p class="mb-0">Urgent Work</p>
+                    <i class="fas fa-tasks fa-2x mb-2"></i>
+                    <h3>{{ pending_task_assignments }}</h3>
+                    <p class="mb-0">Pending Tasks</p>
                 </div>
             </div>
         </div>
         <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card bg-info text-white h-100">
+            <div class="card bg-{% if overdue_tasks > 0 %}danger{% else %}info{% endif %} text-white h-100">
                 <div class="card-body text-center">
-                    <i class="fas fa-hand-paper fa-2x mb-2"></i>
-                    <h3>{{ total_available }}</h3>
-                    <p class="mb-0">Available to Pick</p>
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <h3>{{ overdue_tasks }}</h3>
+                    <p class="mb-0">Overdue Tasks</p>
                 </div>
             </div>
         </div>
@@ -125,117 +357,83 @@
             </div>
         </div>
 
-        <!-- Available Work to Pick Up -->
+        <!-- Task Assignments from Super Employee -->
         <div class="col-lg-6 mb-4">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-hand-paper"></i> Available Work</h5>
-                    <span class="badge bg-info">{{ available_work.count }}</span>
+                    <h5 class="mb-0"><i class="fas fa-tasks"></i> Task Assignments</h5>
+                    <span class="badge bg-warning">{{ my_task_assignments.count }}</span>
                 </div>
                 <div class="card-body">
-                    {% if available_work %}
+                    {% if my_task_assignments %}
                         <div class="list-group list-group-flush">
-                            {% for appointment in available_work|slice:":5" %}
+                            {% for assignment in my_task_assignments|slice:":3" %}
                             <div class="list-group-item">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div class="flex-grow-1">
                                         <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <h6 class="mb-1">{{ appointment.selected_service.name }}</h6>
-                                            <span class="badge bg-{{ appointment.get_priority_color }}">
-                                                {{ appointment.get_priority_display }}
-                                            </span>
+                                            <h6 class="mb-1">{{ assignment.title }}</h6>
+                                            <div>
+                                                <span class="badge bg-{{ assignment.get_status_color }}">
+                                                    {{ assignment.get_status_display }}
+                                                </span>
+                                                <span class="badge bg-{{ assignment.get_priority_color }} ms-1">
+                                                    {{ assignment.get_priority_display }}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <p class="mb-1 text-muted">
-                                            <i class="fas fa-calendar"></i> {{ appointment.slot_date|date:"M d, Y" }}
-                                            <i class="fas fa-clock ms-2"></i> {{ appointment.get_slot_time_display }}
-                                        </p>
+                                        <p class="mb-1 text-muted">{{ assignment.description|truncatewords:15 }}</p>
                                         <p class="mb-1">
-                                            <strong>Vehicle:</strong> {{ appointment.vehicle_year }} {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}<br>
-                                            <strong>Price:</strong> <span class="text-success">₹{{ appointment.selected_service.base_price }}</span>
+                                            <small class="text-muted">
+                                                <i class="fas fa-user"></i> From: {{ assignment.assigned_by.user.get_full_name }}<br>
+                                                <i class="fas fa-calendar"></i> Due: {{ assignment.due_date|date:"M d, H:i" }}
+                                                {% if assignment.is_overdue %}<span class="text-danger">(Overdue)</span>{% endif %}
+                                            </small>
                                         </p>
+                                        {% if assignment.progress_percentage > 0 %}
+                                        <div class="progress mb-2" style="height: 6px;">
+                                            <div class="progress-bar" role="progressbar" style="width: {{ assignment.progress_percentage }}%"></div>
+                                        </div>
+                                        <small class="text-muted">Progress: {{ assignment.progress_percentage }}%</small>
+                                        {% endif %}
                                         <div class="mt-2">
-                                            <a href="{% url 'appointments:update_status' appointment.id %}" class="btn btn-sm btn-primary">
-                                                <i class="fas fa-hand-paper"></i> Pick Up Work
+                                            <a href="{% url 'accounts:task_assignment_detail' assignment.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> View Details
                                             </a>
-                                            <a href="{% url 'appointments:appointment_detail' appointment.id %}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-eye"></i> Details
+                                            {% if assignment.status == 'pending' %}
+                                            <a href="{% url 'accounts:update_task_status' assignment.id 'accepted' %}" class="btn btn-sm btn-success">
+                                                <i class="fas fa-check"></i> Accept
                                             </a>
+                                            {% elif assignment.status == 'accepted' %}
+                                            <a href="{% url 'accounts:update_task_status' assignment.id 'in_progress' %}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-play"></i> Start Work
+                                            </a>
+                                            {% elif assignment.status == 'in_progress' %}
+                                            <a href="{% url 'accounts:update_task_status' assignment.id 'completed' %}" class="btn btn-sm btn-success">
+                                                <i class="fas fa-check-circle"></i> Complete
+                                            </a>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             {% endfor %}
                         </div>
-                        {% if available_work.count > 5 %}
-                            <div class="text-center mt-3">
-                                <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary btn-sm">
-                                    View All Available Work
-                                </a>
-                            </div>
-                        {% endif %}
                     {% else %}
                         <div class="text-center py-4">
-                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                            <h6>No available work</h6>
-                            <p class="text-muted">All work is currently assigned!</p>
+                            <i class="fas fa-clipboard fa-3x text-muted mb-3"></i>
+                            <h6>No task assignments</h6>
+                            <p class="text-muted">Your supervisor hasn't assigned any tasks yet.</p>
                         </div>
                     {% endif %}
                 </div>
-            </div>
         </div>
     </div>
 
-        <!-- Upcoming Work -->
-        <div class="col-lg-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Upcoming Work (Next 7 Days)</h5>
-                    <span class="badge bg-info">{{ upcoming_work.count }}</span>
-                </div>
-                <div class="card-body">
-                    {% if upcoming_work %}
-                        <div class="list-group list-group-flush">
-                            {% for appointment in upcoming_work|slice:":5" %}
-                            <div class="list-group-item">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <h6 class="mb-1">{{ appointment.selected_service.name }}</h6>
-                                            <small class="text-muted">{{ appointment.slot_date|date:"M d" }}</small>
-                                        </div>
-                                        <p class="mb-1 text-muted">
-                                            <i class="fas fa-calendar"></i> {{ appointment.slot_date|date:"M d, Y" }}
-                                            <i class="fas fa-clock ms-3"></i> {{ appointment.get_slot_time_display }}
-                                        </p>
-                                        <p class="mb-1">
-                                            <strong>Customer:</strong> {{ appointment.customer.get_full_name|default:appointment.customer.username }}<br>
-                                            <strong>Vehicle:</strong> {{ appointment.vehicle_year }} {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% if upcoming_work.count > 5 %}
-                            <div class="text-center mt-3">
-                                <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary btn-sm">
-                                    View All Upcoming Work
-                                </a>
-                            </div>
-                        {% endif %}
-                    {% else %}
-                        <div class="text-center py-4">
-                            <i class="fas fa-calendar fa-3x text-muted mb-3"></i>
-                            <h6>No upcoming work</h6>
-                            <p class="text-muted">Your schedule is clear for the next week.</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Completed Work -->
+    {% comment %}
+    <!-- Available Work and Upcoming Work sections hidden for regular employees -->
+    <!-- Only super employees need to see available work to assign to others -->
+    {% endcomment %}    <!-- Recent Completed Work -->
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -332,4 +530,5 @@
         </div>
     </div>
 </div>
+{% endif %}
 {% endblock %}

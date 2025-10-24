@@ -1,0 +1,290 @@
+{% extends 'base.html' %}
+
+{% block title %}Task Assignment - CarModX{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'accounts:employee_dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Task Assignment #{{ assignment.id }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ assignment.title }}</h5>
+                        <div>
+                            <span class="badge bg-{{ assignment.get_status_color }} fs-6">{{ assignment.get_status_display }}</span>
+                            <span class="badge bg-{{ assignment.get_priority_color }} fs-6">{{ assignment.get_priority_display }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6>Assignment Details</h6>
+                            <p><strong>Assigned By:</strong> {{ assignment.assigned_by.user.get_full_name }}</p>
+                            <p><strong>Assigned To:</strong> {{ assignment.assigned_to.user.get_full_name }}</p>
+                            <p><strong>Assigned On:</strong> {{ assignment.assigned_at|date:"M d, Y H:i" }}</p>
+                            <p><strong>Due Date:</strong> 
+                                {{ assignment.due_date|date:"M d, Y H:i" }}
+                                {% if assignment.is_overdue %}
+                                    <span class="badge bg-danger ms-2">Overdue</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Progress</h6>
+                            <div class="progress mb-2" style="height: 20px;">
+                                <div class="progress-bar bg-{{ assignment.get_status_color }}" role="progressbar" style="width: {{ assignment.progress_percentage }}%">
+                                    {{ assignment.progress_percentage }}%
+                                </div>
+                            </div>
+                            {% if assignment.accepted_at %}
+                                <p><strong>Accepted:</strong> {{ assignment.accepted_at|date:"M d, Y H:i" }}</p>
+                            {% endif %}
+                            {% if assignment.started_at %}
+                                <p><strong>Started:</strong> {{ assignment.started_at|date:"M d, Y H:i" }}</p>
+                            {% endif %}
+                            {% if assignment.completed_at %}
+                                <p><strong>Completed:</strong> {{ assignment.completed_at|date:"M d, Y H:i" }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6>Description</h6>
+                        <div class="bg-light p-3 rounded">
+                            {{ assignment.description|linebreaks }}
+                        </div>
+                    </div>
+
+                    {% if assignment.appointment %}
+                    <div class="mb-4">
+                        <h6>Related Appointment</h6>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ assignment.appointment.selected_service.name }}</h6>
+                                <p class="card-text">
+                                    <strong>Customer:</strong> {{ assignment.appointment.customer.get_full_name }}<br>
+                                    <strong>Vehicle:</strong> {{ assignment.appointment.vehicle_year }} {{ assignment.appointment.vehicle_make }} {{ assignment.appointment.vehicle_model }}<br>
+                                    <strong>Date & Time:</strong> {{ assignment.appointment.slot_date }} - {{ assignment.appointment.get_slot_time_display }}
+                                </p>
+                                <a href="{% url 'appointments:appointment_detail' assignment.appointment.id %}" class="btn btn-sm btn-primary">
+                                    View Appointment
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if assignment.employee_notes %}
+                    <div class="mb-4">
+                        <h6>Employee Notes</h6>
+                        <div class="bg-light p-3 rounded">
+                            {{ assignment.employee_notes|linebreaks }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if assignment.supervisor_notes %}
+                    <div class="mb-4">
+                        <h6>Supervisor Notes</h6>
+                        <div class="bg-light p-3 rounded">
+                            {{ assignment.supervisor_notes|linebreaks }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6>Actions</h6>
+                </div>
+                <div class="card-body">
+                    {% if is_assignee %}
+                        <!-- Employee Actions -->
+                        <form method="post" class="mb-3">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Update Status</label>
+                                <select name="status" id="status" class="form-select" onchange="updateProgressField()">
+                                    <option value="pending" {% if assignment.status == 'pending' %}selected{% endif %}>Pending</option>
+                                    <option value="accepted" {% if assignment.status == 'accepted' %}selected{% endif %}>Accepted</option>
+                                    <option value="in_progress" {% if assignment.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                    <option value="completed" {% if assignment.status == 'completed' %}selected{% endif %}>Completed</option>
+                                    <option value="rejected" {% if assignment.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="progress" class="form-label">Progress (%)</label>
+                                <input type="number" name="progress" id="progress" class="form-control" 
+                                       value="{{ assignment.progress_percentage }}" min="0" max="100">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="employee_notes" class="form-label">Notes</label>
+                                <textarea name="employee_notes" id="employee_notes" class="form-control" rows="4">{{ assignment.employee_notes }}</textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-save"></i> Update Task
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    {% if is_supervisor %}
+                        <!-- Supervisor Actions -->
+                        <form method="post" class="mb-3">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="supervisor_notes" class="form-label">Supervisor Notes</label>
+                                <textarea name="supervisor_notes" id="supervisor_notes" class="form-control" rows="4">{{ assignment.supervisor_notes }}</textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-save"></i> Update Supervisor Notes
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    <hr>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'accounts:employee_dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                        
+                        {% if assignment.appointment %}
+                        <a href="{% url 'appointments:appointment_detail' assignment.appointment.id %}" class="btn btn-outline-primary">
+                            <i class="fas fa-calendar"></i> View Related Appointment
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline Card -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6>Timeline</h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <h6>Task Assigned</h6>
+                                <small class="text-muted">{{ assignment.assigned_at|date:"M d, Y H:i" }}</small>
+                            </div>
+                        </div>
+                        
+                        {% if assignment.accepted_at %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <h6>Task Accepted</h6>
+                                <small class="text-muted">{{ assignment.accepted_at|date:"M d, Y H:i" }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if assignment.started_at %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-warning"></div>
+                            <div class="timeline-content">
+                                <h6>Work Started</h6>
+                                <small class="text-muted">{{ assignment.started_at|date:"M d, Y H:i" }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if assignment.completed_at %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <h6>Task Completed</h6>
+                                <small class="text-muted">{{ assignment.completed_at|date:"M d, Y H:i" }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateProgressField() {
+    const status = document.getElementById('status').value;
+    const progressField = document.getElementById('progress');
+    
+    switch(status) {
+        case 'pending':
+            progressField.value = 0;
+            break;
+        case 'accepted':
+            if (progressField.value == 0) progressField.value = 10;
+            break;
+        case 'in_progress':
+            if (progressField.value < 10) progressField.value = 25;
+            break;
+        case 'completed':
+            progressField.value = 100;
+            break;
+        case 'rejected':
+            progressField.value = 0;
+            break;
+    }
+}
+</script>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-item:not(:last-child):before {
+    content: '';
+    position: absolute;
+    left: -22px;
+    top: 20px;
+    height: 100%;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -26px;
+    top: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.timeline-content h6 {
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+</style>
+{% endblock %}

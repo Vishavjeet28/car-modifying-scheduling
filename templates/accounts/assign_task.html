@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Assign Task - CarModX{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'accounts:employee_dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Assign Task</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-tasks"></i> Assign New Task</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="assigned_to" class="form-label">Assign To Employee *</label>
+                                <select name="assigned_to" id="assigned_to" class="form-select" required>
+                                    <option value="">Select Employee</option>
+                                    {% for emp in available_employees %}
+                                    <option value="{{ emp.id }}" data-status="{{ emp.current_status }}" data-tasks="{{ emp.get_pending_tasks_count }}">
+                                        {{ emp.user.get_full_name }} ({{ emp.employee_id }}) - {{ emp.get_current_status_display }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="priority" class="form-label">Priority *</label>
+                                <select name="priority" id="priority" class="form-select" required>
+                                    <option value="low">Low Priority</option>
+                                    <option value="normal" selected>Normal Priority</option>
+                                    <option value="high">High Priority</option>
+                                    <option value="urgent">Urgent Priority</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Task Title *</label>
+                            <input type="text" name="title" id="title" class="form-control" required placeholder="Enter a descriptive task title">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Task Description *</label>
+                            <textarea name="description" id="description" class="form-control" rows="4" required placeholder="Provide detailed instructions for the task"></textarea>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="due_date" class="form-label">Due Date & Time *</label>
+                                <input type="datetime-local" name="due_date" id="due_date" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="appointment_id" class="form-label">Related Appointment (Optional)</label>
+                                <select name="appointment_id" id="appointment_id" class="form-select">
+                                    <option value="">No appointment</option>
+                                    {% for appointment in unassigned_appointments %}
+                                    <option value="{{ appointment.id }}">
+                                        {{ appointment.selected_service.name }} - {{ appointment.customer.get_full_name }} 
+                                        ({{ appointment.slot_date }} {{ appointment.get_slot_time_display }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'accounts:employee_dashboard' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Assign Task
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Employee Status Overview -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6><i class="fas fa-users"></i> Employee Status</h6>
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    {% for emp in available_employees %}
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 border rounded" id="employee-{{ emp.id }}">
+                        <div>
+                            <strong>{{ emp.user.get_full_name }}</strong><br>
+                            <small class="text-muted">{{ emp.employee_id }} | {{ emp.specialization }}</small><br>
+                            <span class="badge bg-{% if emp.current_status == 'available' %}success{% elif emp.current_status == 'busy' %}warning{% else %}secondary{% endif %}">
+                                {{ emp.get_current_status_display }}
+                            </span>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted">Active: {{ emp.get_pending_tasks_count }}</small><br>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="selectEmployee({{ emp.id }})">
+                                Select
+                            </button>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center">No employees available</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Unassigned Work -->
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-exclamation-triangle text-warning"></i> Unassigned Appointments</h6>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    {% for appointment in unassigned_appointments|slice:":5" %}
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                        <div>
+                            <small><strong>{{ appointment.selected_service.name }}</strong></small><br>
+                            <small class="text-muted">{{ appointment.customer.get_full_name }}</small><br>
+                            <small class="text-muted">{{ appointment.slot_date }} - {{ appointment.get_slot_time_display }}</small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAppointment({{ appointment.id }})">
+                            Use
+                        </button>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center">No unassigned appointments</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function selectEmployee(employeeId) {
+    document.getElementById('assigned_to').value = employeeId;
+    // Highlight selected employee
+    document.querySelectorAll('[id^="employee-"]').forEach(el => {
+        el.classList.remove('border-primary', 'bg-light');
+    });
+    document.getElementById('employee-' + employeeId).classList.add('border-primary', 'bg-light');
+}
+
+function selectAppointment(appointmentId) {
+    document.getElementById('appointment_id').value = appointmentId;
+    
+    // Get appointment details for auto-filling
+    const option = document.querySelector(`#appointment_id option[value="${appointmentId}"]`);
+    if (option) {
+        const text = option.textContent;
+        const serviceName = text.split(' - ')[0];
+        
+        // Auto-fill title if empty
+        if (!document.getElementById('title').value) {
+            document.getElementById('title').value = `Complete ${serviceName}`;
+        }
+        
+        // Auto-fill description if empty
+        if (!document.getElementById('description').value) {
+            document.getElementById('description').value = `Complete the ${serviceName} service for the assigned customer. Follow all safety protocols and quality standards.`;
+        }
+    }
+}
+
+// Set default due date to tomorrow
+document.addEventListener('DOMContentLoaded', function() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(17, 0, 0, 0); // Set to 5 PM tomorrow
+    document.getElementById('due_date').value = tomorrow.toISOString().slice(0, 16);
+});
+
+// Update employee selection highlight
+document.getElementById('assigned_to').addEventListener('change', function() {
+    const selectedId = this.value;
+    if (selectedId) {
+        selectEmployee(selectedId);
+    }
+});
+</script>
+{% endblock %}
