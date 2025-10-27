@@ -1284,8 +1284,8 @@ class EmployeeDetailView(SuperUserRequiredMixin, AdminLogMixin, TemplateView):
         
         # Get appointment history
         from appointments.models import Appointment
-        appointments = Appointment.objects.filter(employee=employee).select_related(
-            'customer', 'service', 'time_slot'
+        appointments = Appointment.objects.filter(assigned_employee=employee.user).select_related(
+            'customer', 'selected_service'
         ).order_by('-created_at')
         
         # Paginate appointments
@@ -1438,7 +1438,7 @@ class EmployeeDetailAjaxView(SuperUserRequiredMixin, AjaxResponseMixin, View):
             
             # Get appointment statistics
             from appointments.models import Appointment
-            appointments = Appointment.objects.filter(employee=employee)
+            appointments = Appointment.objects.filter(assigned_employee=employee.user)
             total_appointments = appointments.count()
             completed_appointments = appointments.filter(status='completed').count()
             
@@ -2703,13 +2703,13 @@ class NotificationAjaxView(SuperUserRequiredMixin, AjaxResponseMixin, View):
             new_appointments = Appointment.objects.filter(
                 created_at__gte=yesterday,
                 status='pending'
-            ).select_related('service', 'customer').order_by('-created_at')[:5]
+            ).select_related('selected_service', 'customer').order_by('-created_at')[:5]
             
             for appointment in new_appointments:
                 notifications.append({
                     'type': 'new_appointment',
                     'title': 'New Appointment',
-                    'message': f'{appointment.customer.get_full_name()} booked {appointment.service.name}',
+                    'message': f'{appointment.customer.get_full_name()} booked {appointment.selected_service.name}',
                     'timestamp': appointment.created_at.isoformat(),
                     'url': f'/admin/appointments/{appointment.id}/'
                 })
@@ -2718,13 +2718,13 @@ class NotificationAjaxView(SuperUserRequiredMixin, AjaxResponseMixin, View):
             cancelled_appointments = Appointment.objects.filter(
                 updated_at__gte=yesterday,
                 status='cancelled'
-            ).select_related('service', 'customer').order_by('-updated_at')[:3]
+            ).select_related('selected_service', 'customer').order_by('-updated_at')[:3]
             
             for appointment in cancelled_appointments:
                 notifications.append({
                     'type': 'cancellation',
                     'title': 'Appointment Cancelled',
-                    'message': f'{appointment.customer.get_full_name()} cancelled {appointment.service.name}',
+                    'message': f'{appointment.customer.get_full_name()} cancelled {appointment.selected_service.name}',
                     'timestamp': appointment.updated_at.isoformat(),
                     'url': f'/admin/appointments/{appointment.id}/'
                 })

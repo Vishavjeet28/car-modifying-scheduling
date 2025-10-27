@@ -225,6 +225,7 @@
                     <!-- Hidden time input for form submission -->
                     <input type="hidden" name="slot_time" id="id_slot_time" value="">
                     
+                    {% comment %}
                     <!-- Debug Panel (remove in production) -->
                     <div id="debug-panel" style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 10px; margin-top: 10px; font-family: monospace; font-size: 12px; display: none;">
                         <strong>🔍 Debug Info:</strong><br>
@@ -234,6 +235,7 @@
                         <button type="button" onclick="toggleDebugInfo()" style="margin-top: 5px; font-size: 11px;">Toggle Debug</button>
                         <button type="button" onclick="bypassValidation()" style="margin-top: 5px; margin-left: 5px; font-size: 11px; background: #dc3545; color: white; border: none; padding: 2px 5px;">Bypass & Submit</button>
                     </div>
+                    {% endcomment %}
                 </div>
                 
                 <!-- Vehicle Information -->
