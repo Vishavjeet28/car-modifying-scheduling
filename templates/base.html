@@ -180,6 +180,93 @@
     <!-- Custom JS -->
     <script src="{% load static %}{% static 'js/main.js' %}?v=2.0"></script>
     
+    <!-- Ghost Cursor Effect Killer -->
+    <script>
+    (function() {
+        'use strict';
+        
+        // Function to aggressively remove cursor effects
+        function killCursorEffects() {
+            // Remove all canvas elements except charts
+            document.querySelectorAll('canvas').forEach(canvas => {
+                const id = canvas.id || '';
+                const className = canvas.className || '';
+                // Keep only chart canvases
+                if (!id.toLowerCase().includes('chart') && !className.toLowerCase().includes('chart')) {
+                    console.log('Removing suspicious canvas:', canvas);
+                    canvas.remove();
+                }
+            });
+            
+            // Remove elements with cursor/ghost/trail in id or class
+            document.querySelectorAll('*').forEach(el => {
+                const id = (el.id || '').toLowerCase();
+                const className = (el.className || '').toString().toLowerCase();
+                if ((id.includes('cursor') || id.includes('ghost') || id.includes('trail') ||
+                     className.includes('cursor') || className.includes('ghost') || className.includes('trail')) &&
+                    !el.classList.contains('keep-cursor')) {
+                    console.log('Removing suspicious element:', el.tagName, el.id, el.className);
+                    el.remove();
+                }
+            });
+            
+            // Remove full-screen high z-index overlays
+            document.querySelectorAll('*').forEach(el => {
+                const style = window.getComputedStyle(el);
+                const zIndex = parseInt(style.zIndex, 10);
+                const isFixed = style.position === 'fixed' || style.position === 'absolute';
+                const isFullScreen = el.offsetWidth >= window.innerWidth - 50 && el.offsetHeight >= window.innerHeight - 50;
+                
+                if (isFixed && zIndex > 9000 && isFullScreen && !el.classList.contains('modal') && !el.classList.contains('keep-overlay')) {
+                    console.log('Removing high z-index overlay:', el.tagName, zIndex);
+                    el.remove();
+                }
+            });
+        }
+        
+        // Kill on page load
+        window.addEventListener('DOMContentLoaded', killCursorEffects);
+        window.addEventListener('load', killCursorEffects);
+        
+        // Monitor for dynamically added elements
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) { // Element node
+                        const tag = node.tagName ? node.tagName.toLowerCase() : '';
+                        const id = (node.id || '').toLowerCase();
+                        const className = (node.className || '').toString().toLowerCase();
+                        
+                        // Remove suspicious canvas elements
+                        if (tag === 'canvas' && !id.includes('chart') && !className.includes('chart')) {
+                            console.log('Blocking dynamically added canvas:', node);
+                            node.remove();
+                        }
+                        
+                        // Remove cursor-related elements
+                        if (id.includes('cursor') || id.includes('ghost') || id.includes('trail') ||
+                            className.includes('cursor') || className.includes('ghost') || className.includes('trail')) {
+                            console.log('Blocking cursor-related element:', tag, id, className);
+                            node.remove();
+                        }
+                    }
+                });
+            });
+        });
+        
+        // Start observing
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+        
+        // Also run periodically (every 500ms) as a fallback
+        setInterval(killCursorEffects, 500);
+        
+        console.log('🛡️ Ghost Cursor Effect Killer Active');
+    })();
+    </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghost Cursor Diagnostic</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #00ff00;
+        }
+        h1 { color: #ff6b6b; }
+        .result { 
+            background: #2a2a2a; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-left: 4px solid #00ff00;
+        }
+        .warning { border-left-color: #ffd43b; color: #ffd43b; }
+        .error { border-left-color: #ff6b6b; color: #ff6b6b; }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #00dd00; }
+        #output { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Ghost Cursor Effect Diagnostic Tool</h1>
+    <p>This page will help identify what's causing the cursor effect.</p>
+    
+    <button onclick="scanForCursorElements()">🔎 Scan for Cursor Elements</button>
+    <button onclick="scanForCanvasElements()">🎨 Scan for Canvas Elements</button>
+    <button onclick="scanForHighZIndex()">📊 Scan for High Z-Index Elements</button>
+    <button onclick="scanForScripts()">📜 Scan for External Scripts</button>
+    <button onclick="scanAll()">🚀 Run All Scans</button>
+    <button onclick="clearOutput()">🗑️ Clear Results</button>
+    
+    <div id="output"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = 'result ' + (type === 'warning' ? 'warning' : type === 'error' ? 'error' : '');
+            div.innerHTML = message;
+            output.appendChild(div);
+        }
+
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+        }
+
+        function scanForCursorElements() {
+            log('<strong>🔎 Scanning for Cursor/Ghost/Trail Elements...</strong>');
+            
+            const suspiciousElements = document.querySelectorAll('*');
+            const found = [];
+            
+            suspiciousElements.forEach(el => {
+                const id = el.id || '';
+                const className = el.className || '';
+                const tagName = el.tagName.toLowerCase();
+                
+                if (id.match(/cursor|ghost|trail|particle|effect/i) || 
+                    className.toString().match(/cursor|ghost|trail|particle|effect/i)) {
+                    found.push({
+                        tag: tagName,
+                        id: id,
+                        class: className.toString(),
+                        html: el.outerHTML.substring(0, 200)
+                    });
+                }
+            });
+            
+            if (found.length === 0) {
+                log('✅ No suspicious cursor-related elements found in DOM', 'info');
+            } else {
+                log('⚠️ Found ' + found.length + ' suspicious elements:', 'warning');
+                found.forEach(item => {
+                    log('&nbsp;&nbsp;• &lt;' + item.tag + '&gt; id="' + item.id + '" class="' + item.class + '"<br>&nbsp;&nbsp;&nbsp;&nbsp;' + 
+                        item.html.replace(/</g, '&lt;').replace(/>/g, '&gt;'), 'error');
+                });
+            }
+        }
+
+        function scanForCanvasElements() {
+            log('<strong>🎨 Scanning for Canvas Elements...</strong>');
+            
+            const canvases = document.querySelectorAll('canvas');
+            
+            if (canvases.length === 0) {
+                log('✅ No canvas elements found', 'info');
+            } else {
+                log('⚠️ Found ' + canvases.length + ' canvas element(s):', 'warning');
+                canvases.forEach((canvas, index) => {
+                    const style = getComputedStyle(canvas);
+                    const parent = canvas.parentElement ? canvas.parentElement.tagName : 'none';
+                    log('&nbsp;&nbsp;Canvas #' + (index + 1) + ':<br>' +
+                        '&nbsp;&nbsp;&nbsp;&nbsp;ID: ' + (canvas.id || 'none') + '<br>' +
+                        '&nbsp;&nbsp;&nbsp;&nbsp;Class: ' + (canvas.className || 'none') + '<br>' +
+                        '&nbsp;&nbsp;&nbsp;&nbsp;Size: ' + canvas.width + 'x' + canvas.height + '<br>' +
+                        '&nbsp;&nbsp;&nbsp;&nbsp;Position: ' + style.position + '<br>' +
+                        '&nbsp;&nbsp;&nbsp;&nbsp;Z-Index: ' + style.zIndex + '<br>' +
+                        '&nbsp;&nbsp;&nbsp;&nbsp;Parent: &lt;' + parent + '&gt;', 
+                        canvas.width > window.innerWidth - 100 ? 'error' : 'warning');
+                });
+            }
+        }
+
+        function scanForHighZIndex() {
+            log('<strong>📊 Scanning for High Z-Index Elements...</strong>');
+            
+            const allElements = document.querySelectorAll('*');
+            const highZElements = [];
+            
+            allElements.forEach(el => {
+                const style = getComputedStyle(el);
+                const zIndex = parseInt(style.zIndex, 10);
+                
+                if (zIndex > 1000 && (style.position === 'fixed' || style.position === 'absolute')) {
+                    highZElements.push({
+                        tag: el.tagName,
+                        id: el.id,
+                        class: el.className.toString(),
+                        zIndex: zIndex,
+                        position: style.position,
+                        size: el.offsetWidth + 'x' + el.offsetHeight
+                    });
+                }
+            });
+            
+            if (highZElements.length === 0) {
+                log('✅ No high z-index fixed/absolute elements found', 'info');
+            } else {
+                log('⚠️ Found ' + highZElements.length + ' high z-index element(s):', 'warning');
+                highZElements.forEach(item => {
+                    log('&nbsp;&nbsp;• &lt;' + item.tag + '&gt; z-index: ' + item.zIndex + ', ' + item.position + 
+                        ' (' + item.size + ')<br>&nbsp;&nbsp;&nbsp;&nbsp;ID: "' + item.id + '" Class: "' + item.class + '"', 'error');
+                });
+            }
+        }
+
+        function scanForScripts() {
+            log('<strong>📜 Scanning for External Scripts...</strong>');
+            
+            const scripts = document.querySelectorAll('script[src]');
+            
+            if (scripts.length === 0) {
+                log('✅ No external scripts found', 'info');
+            } else {
+                log('ℹ️ Found ' + scripts.length + ' external script(s):', 'info');
+                scripts.forEach((script, index) => {
+                    const src = script.src;
+                    const isDjango = src.includes('127.0.0.1') || src.includes('localhost');
+                    log('&nbsp;&nbsp;' + (index + 1) + '. ' + (isDjango ? '✅ Django: ' : '⚠️ External: ') + src, 
+                        isDjango ? 'info' : 'warning');
+                });
+            }
+        }
+
+        function scanAll() {
+            clearOutput();
+            log('<strong>=== 🚀 Running Complete Diagnostic Scan ===</strong>');
+            log('Browser: ' + navigator.userAgent);
+            log('Window Size: ' + window.innerWidth + 'x' + window.innerHeight);
+            log('');
+            scanForCursorElements();
+            log('');
+            scanForCanvasElements();
+            log('');
+            scanForHighZIndex();
+            log('');
+            scanForScripts();
+            log('');
+            log('<strong>=== ✅ Scan Complete ===</strong>');
+        }
+
+        // Auto-run on page load
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                log('🟢 Diagnostic page loaded. Click "Run All Scans" to begin analysis.');
+            }, 100);
+        });
+    </script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import contact_views
 
 app_name = 'admin_panel'
 
@@ -10,6 +11,14 @@ urlpatterns = [
     
     # Admin Logs
     path('logs/', views.AdminLogListView.as_view(), name='logs'),
+    
+    # Contact Messages
+    path('contact-messages/', contact_views.ContactMessageListView.as_view(), name='contact_messages'),
+    path('contact-messages/<int:pk>/', contact_views.ContactMessageDetailView.as_view(), name='contact_message_detail'),
+    path('contact-messages/<int:pk>/edit/', contact_views.ContactMessageUpdateView.as_view(), name='contact_message_update'),
+    path('contact-messages/<int:pk>/mark-read/', contact_views.mark_as_read, name='contact_mark_read'),
+    path('contact-messages/<int:pk>/mark-unread/', contact_views.mark_as_unread, name='contact_mark_unread'),
+    path('contact-messages/<int:pk>/delete/', contact_views.delete_message, name='contact_delete'),
     
     # Service Management
     path('services/', views.ServiceListView.as_view(), name='service_list'),

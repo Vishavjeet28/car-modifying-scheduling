@@ -25,6 +25,7 @@ urlpatterns = [
     path('', views.home_view, name='home'),
     path('about/', views.about_view, name='about'),
     path('contact/', views.contact_view, name='contact'),
+    path('diagnostic/', views.diagnostic_view, name='diagnostic'),
     path('test-dropdown/', views.test_dropdown_view, name='test_dropdown'),
     path('accounts/', include('accounts.urls')),
     path('services/', include('services.urls')),

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Delete Button</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Delete Button Test</h1>
+        <p>Click the delete button below to test if the modal opens:</p>
+        
+        <button type="button" class="btn btn-outline-danger" 
+                onclick="confirmDelete(70, 'AC System Flush')"
+                title="Delete">
+            <i class="bi bi-trash"></i> Test Delete Button
+        </button>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the service "<span id="deleteServiceName"></span>"?</p>
+                    <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <a href="#" class="btn btn-danger" id="confirmDeleteBtn">Delete Service</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function confirmDelete(serviceId, serviceName) {
+        console.log('✅ Delete button clicked for service:', serviceId, serviceName);
+        
+        document.getElementById('deleteServiceName').textContent = serviceName;
+        document.getElementById('confirmDeleteBtn').href = `/admin-panel/services/${serviceId}/delete/`;
+        
+        // Use Bootstrap 5 modal API
+        try {
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            deleteModal.show();
+            console.log('✅ Modal should be showing now');
+        } catch (error) {
+            console.error('❌ Error showing modal:', error);
+        }
+    }
+    
+    // Test on page load
+    window.addEventListener('load', function() {
+        console.log('✅ Page loaded');
+        console.log('✅ Bootstrap version:', bootstrap.Modal ? 'Bootstrap 5 loaded' : 'Bootstrap NOT loaded');
+    });
+    </script>
+</body>
+</html>

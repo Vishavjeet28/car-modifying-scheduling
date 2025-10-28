@@ -215,8 +215,9 @@
                                        class="btn btn-outline-primary" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <button type="button" class="btn btn-outline-danger" 
-                                            onclick="confirmDelete({{ service.id }}, '{{ service.name|escapejs }}')"
+                                    <button type="button" class="btn btn-outline-danger delete-service-btn" 
+                                            data-service-id="{{ service.id }}"
+                                            data-service-name="{{ service.name|escapejs }}"
                                             title="Delete">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -388,6 +389,18 @@ $(document).ready(function() {
     });
 });
 
+// Handle delete button clicks using event delegation
+document.addEventListener('DOMContentLoaded', function() {
+    document.body.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-service-btn')) {
+            const button = e.target.closest('.delete-service-btn');
+            const serviceId = button.getAttribute('data-service-id');
+            const serviceName = button.getAttribute('data-service-name');
+            confirmDelete(serviceId, serviceName);
+        }
+    });
+});
+
 function updateBulkActions() {
     const checkedCount = $('.service-checkbox:checked').length;
     
@@ -406,7 +419,7 @@ function viewServiceDetails(serviceId) {
     $('#serviceDetailsModal').modal('show');
     
     $.ajax({
-        url: `/admin/services/${serviceId}/detail/`,
+        url: `/admin-panel/services/${serviceId}/detail/`,
         method: 'GET',
         success: function(response) {
             if (response.success) {
@@ -487,9 +500,39 @@ function viewServiceDetails(serviceId) {
 }
 
 function confirmDelete(serviceId, serviceName) {
-    $('#deleteServiceName').text(serviceName);
-    $('#confirmDeleteBtn').attr('href', `/admin/services/${serviceId}/delete/`);
-    $('#deleteConfirmModal').modal('show');
+    console.log('Delete button clicked for service:', serviceId, serviceName);
+    
+    document.getElementById('deleteServiceName').textContent = serviceName;
+    document.getElementById('confirmDeleteBtn').href = `/admin-panel/services/${serviceId}/delete/`;
+    
+    // Use Bootstrap 5 modal API
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    deleteModal.show();
+    
+    // Fix scrolling issue when modal closes
+    const modalElement = document.getElementById('deleteConfirmModal');
+    modalElement.addEventListener('hidden.bs.modal', function () {
+        // Remove modal backdrop and restore scrolling
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // Remove any lingering backdrops
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+    });
 }
+
+// Fix scrolling on page load (in case user navigated back after deleting)
+document.addEventListener('DOMContentLoaded', function() {
+    // Remove any stuck modal classes
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    
+    // Remove any lingering backdrops
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops.forEach(backdrop => backdrop.remove());
+});
 </script>
 {% endblock %}

@@ -330,15 +330,12 @@ def slot_occupancy_view(request):
     
     # Prepare slot occupancy information
     slot_occupancy = []
-    for slot_time, slot_data in daily_details['time_slots'].items():
-        slot_display = slot_data['display']
-        appointments = slot_data['appointments']
-        
+    for slot_info in daily_details['slots']:
         occupancy_info = {
-            'time': slot_time,
-            'display': slot_display,
-            'occupied': len(appointments) > 0,
-            'appointments': appointments
+            'time': slot_info['time'],
+            'display': slot_info['display'],
+            'occupied': slot_info['occupied'],
+            'appointment_info': slot_info['appointment'] if slot_info['occupied'] else None
         }
         
         slot_occupancy.append(occupancy_info)

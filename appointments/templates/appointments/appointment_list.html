@@ -70,10 +70,13 @@
                                     </td>
                                     <td>
                                         <span class="badge 
-                                            {% if appointment.status == 'booked' %}badge-success
-                                            {% elif appointment.status == 'cancelled' %}badge-danger
-                                            {% elif appointment.status == 'completed' %}badge-primary
-                                            {% endif %}">
+                                            {% if appointment.status == 'completed' %}bg-success
+                                            {% elif appointment.status == 'booked' %}bg-info
+                                            {% elif appointment.status == 'assigned' %}bg-primary
+                                            {% elif appointment.status == 'in_progress' %}bg-warning
+                                            {% elif appointment.status == 'on_hold' %}bg-secondary
+                                            {% elif appointment.status == 'cancelled' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}">
                                             {{ appointment.get_status_display }}
                                         </span>
                                     </td>

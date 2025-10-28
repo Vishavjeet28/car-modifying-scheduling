@@ -291,7 +291,7 @@ class ServiceDeleteView(SuperUserRequiredMixin, AdminLogMixin, DeleteView):
         # Check for related appointments
         from appointments.models import Appointment
         context['related_appointments'] = Appointment.objects.filter(
-            service=self.object
+            selected_service=self.object
         ).count()
         
         return context
@@ -375,7 +375,7 @@ class ServiceDetailAjaxView(SuperUserRequiredMixin, AjaxResponseMixin, View):
             
             # Get appointment count
             from appointments.models import Appointment
-            appointment_count = Appointment.objects.filter(service=service).count()
+            appointment_count = Appointment.objects.filter(selected_service=service).count()
             
             data = {
                 'id': service.id,

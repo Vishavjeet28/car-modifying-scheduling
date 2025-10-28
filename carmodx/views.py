@@ -1,8 +1,10 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from services.models import Service, ServiceCategory
 from appointments.models import Appointment
 from django.db.models import Count
+from main.forms import ContactForm
 
 
 def home_view(request):
@@ -33,8 +35,41 @@ def about_view(request):
 
 
 def contact_view(request):
-    """Contact page view"""
-    return render(request, 'contact.html')
+    """Contact page view with form handling"""
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            # Save the contact message
+            contact_message = form.save()
+            
+            # Show success message
+            messages.success(
+                request, 
+                f'Thank you {contact_message.name}! Your message has been received. '
+                'We will get back to you as soon as possible.'
+            )
+            
+            # Redirect to avoid form resubmission
+            return redirect('contact')
+        else:
+            # Show error message
+            messages.error(
+                request,
+                'Please correct the errors below and try again.'
+            )
+    else:
+        form = ContactForm()
+    
+    context = {
+        'form': form
+    }
+    
+    return render(request, 'contact.html', context)
+
+
+def diagnostic_view(request):
+    """Diagnostic page to identify ghost cursor effect"""
+    return render(request, 'diagnostic.html')
 
 
 def test_dropdown_view(request):

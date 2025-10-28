@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-)m(g!_1tju=3fb7ia!(7138qi96%1jzcbm7lgu^ki#6xx!u@k#
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver', '.ngrok-free.app', '.ngrok.io']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 
 
 # Application definition
@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'crispy_forms',
     'crispy_bootstrap5',
+    'main',  # Main app for contact messages
     'accounts',
     'services',
     'appointments',

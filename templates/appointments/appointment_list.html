@@ -34,9 +34,10 @@
                             <label for="status" class="form-label">Status</label>
                             <select name="status" class="form-select">
                                 <option value="">All Statuses</option>
-                                <option value="pending" {% if search_form.status.value == 'pending' %}selected{% endif %}>Pending</option>
-                                <option value="confirmed" {% if search_form.status.value == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                                <option value="booked" {% if search_form.status.value == 'booked' %}selected{% endif %}>Booked</option>
+                                <option value="assigned" {% if search_form.status.value == 'assigned' %}selected{% endif %}>Assigned</option>
                                 <option value="in_progress" {% if search_form.status.value == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                <option value="on_hold" {% if search_form.status.value == 'on_hold' %}selected{% endif %}>On Hold</option>
                                 <option value="completed" {% if search_form.status.value == 'completed' %}selected{% endif %}>Completed</option>
                                 <option value="cancelled" {% if search_form.status.value == 'cancelled' %}selected{% endif %}>Cancelled</option>
                             </select>
@@ -118,14 +119,14 @@
                                         </td>
                                         <td>
                                             <div>
-                                                <strong>{{ appointment.service.name }}</strong><br>
-                                                <small class="text-muted">{{ appointment.service.category.name }}</small>
+                                                <strong>{{ appointment.selected_service.name }}</strong><br>
+                                                <small class="text-muted">{{ appointment.selected_service.category.name }}</small>
                                             </div>
                                         </td>
                                         <td>
                                             <div>
-                                                <strong>{{ appointment.time_slot.date|date:"M d, Y" }}</strong><br>
-                                                <small class="text-muted">{{ appointment.time_slot.start_time|time:"g:i A" }} - {{ appointment.time_slot.end_time|time:"g:i A" }}</small>
+                                                <strong>{{ appointment.slot_date|date:"M d, Y" }}</strong><br>
+                                                <small class="text-muted">{{ appointment.get_slot_time_display }}</small>
                                             </div>
                                         </td>
                                         <td>
@@ -135,14 +136,14 @@
                                             </div>
                                         </td>
                                         <td>
-                                            {% if appointment.employee %}
-                                                <span class="badge bg-info">{{ appointment.employee.user.get_full_name }}</span>
+                                            {% if appointment.assigned_employee %}
+                                                <span class="badge bg-info">{{ appointment.assigned_employee.get_full_name }}</span>
                                             {% else %}
                                                 <span class="badge bg-warning">Unassigned</span>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <span class="badge bg-{% if appointment.status == 'confirmed' %}success{% elif appointment.status == 'pending' %}warning{% elif appointment.status == 'in_progress' %}info{% elif appointment.status == 'completed' %}primary{% elif appointment.status == 'cancelled' %}danger{% else %}secondary{% endif %}">
+                                            <span class="badge bg-{% if appointment.status == 'completed' %}success{% elif appointment.status == 'booked' %}info{% elif appointment.status == 'assigned' %}primary{% elif appointment.status == 'in_progress' %}warning{% elif appointment.status == 'on_hold' %}secondary{% elif appointment.status == 'cancelled' %}danger{% else %}secondary{% endif %}">
                                                 {{ appointment.get_status_display }}
                                             </span>
                                         </td>
@@ -152,7 +153,7 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <strong>₹{{ appointment.estimated_price }}</strong>
+                                            <strong>₹{{ appointment.selected_service.base_price }}</strong>
                                             {% if appointment.final_price %}
                                                 <br><small class="text-success">Final: ₹{{ appointment.final_price }}</small>
                                             {% endif %}

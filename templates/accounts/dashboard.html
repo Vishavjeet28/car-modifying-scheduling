@@ -70,7 +70,7 @@
                             <div class="list-group-item">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
-                                        <h6 class="mb-1">{{ appointment.service.name }}</h6>
+                                        <h6 class="mb-1">{{ appointment.selected_service.name }}</h6>
                                         <p class="mb-1 text-muted">
                                             <i class="fas fa-calendar"></i> {{ appointment.slot_date|date:"M d, Y" }}
                                             <i class="fas fa-clock ms-3"></i> {{ appointment.get_slot_time_display }}
@@ -140,7 +140,7 @@
                             <div class="list-group-item px-0">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
-                                        <h6 class="mb-1">{{ appointment.service.name }}</h6>
+                                        <h6 class="mb-1">{{ appointment.selected_service.name }}</h6>
                                         <small class="text-muted">{{ appointment.created_at|date:"M d, Y" }}</small>
                                     </div>
                                     <span class="badge bg-{% if appointment.status == 'completed' %}success{% elif appointment.status == 'cancelled' %}danger{% else %}warning{% endif %}">

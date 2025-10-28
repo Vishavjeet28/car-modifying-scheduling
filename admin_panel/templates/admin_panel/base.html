@@ -104,6 +104,22 @@
                 </div>
                 {% endif %}
                 
+                <!-- Communication -->
+                {% if user.is_superuser %}
+                <div class="nav-section">
+                    <h6 class="nav-header text-muted px-4 py-2 mb-0 text-uppercase small">Communication</h6>
+                    <a class="nav-link text-white py-2 px-4 {% if 'contact' in request.resolver_match.url_name %}active bg-primary{% endif %}" 
+                       href="{% url 'admin_panel:contact_messages' %}">
+                        <i class="bi bi-envelope me-3"></i>Contact Messages
+                        {% load contact_extras %}
+                        {% get_unread_contact_count as unread_count %}
+                        {% if unread_count > 0 %}
+                            <span class="badge bg-danger rounded-pill ms-2">{{ unread_count }}</span>
+                        {% endif %}
+                    </a>
+                </div>
+                {% endif %}
+                
                 <!-- System -->
                 <div class="nav-section">
                     <h6 class="nav-header text-muted px-4 py-2 mb-0 text-uppercase small">System</h6>
@@ -163,6 +179,47 @@
     
     <!-- Custom JS -->
     <script src="{% static 'admin_panel/js/admin.js' %}"></script>
+    
+    <!-- Global Modal Scroll Fix -->
+    <script>
+    // Fix modal scrolling issues globally
+    document.addEventListener('DOMContentLoaded', function() {
+        // Clean up any stuck modal states on page load
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // Remove any lingering backdrops
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        
+        // Add event listeners to all modals
+        document.querySelectorAll('.modal').forEach(function(modalElement) {
+            modalElement.addEventListener('hidden.bs.modal', function () {
+                // Ensure body scrolling is restored
+                setTimeout(function() {
+                    if (!document.querySelector('.modal.show')) {
+                        document.body.classList.remove('modal-open');
+                        document.body.style.overflow = '';
+                        document.body.style.paddingRight = '';
+                        
+                        // Remove any leftover backdrops
+                        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                    }
+                }, 100);
+            });
+        });
+    });
+    
+    // Also fix on window focus (when returning to tab)
+    window.addEventListener('focus', function() {
+        if (!document.querySelector('.modal.show')) {
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        }
+    });
+    </script>
     
     {% block extra_js %}{% endblock %}
 </body>
