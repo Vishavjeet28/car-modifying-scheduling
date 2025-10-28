@@ -1,0 +1,175 @@
+{% extends 'admin_panel/base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">{{ page_title }}</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'admin_panel:dashboard' %}">Dashboard</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'admin_panel:settings_list' %}">Settings</a></li>
+                            <li class="breadcrumb-item active">{{ form_action }}</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <a href="{% url 'admin_panel:settings_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Settings
+                    </a>
+                </div>
+            </div>
+
+            <!-- Form Card -->
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-cog"></i> {{ form_action }} System Setting
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" novalidate>
+                                {% csrf_token %}
+                                
+                                <!-- Setting Key -->
+                                <div class="mb-3">
+                                    <label for="{{ form.key.id_for_label }}" class="form-label">
+                                        Setting Key <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.key }}
+                                    {% if form.key.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.key.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        Use lowercase letters, numbers, and underscores only (e.g., time_slot_duration)
+                                    </div>
+                                </div>
+
+                                <!-- Setting Value -->
+                                <div class="mb-3">
+                                    <label for="{{ form.value.id_for_label }}" class="form-label">
+                                        Setting Value <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.value }}
+                                    {% if form.value.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.value.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        Enter the configuration value. Format depends on setting type.
+                                    </div>
+                                </div>
+
+                                <!-- Setting Description -->
+                                <div class="mb-4">
+                                    <label for="{{ form.description.id_for_label }}" class="form-label">
+                                        Description
+                                    </label>
+                                    {{ form.description }}
+                                    {% if form.description.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.description.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        Optional description explaining what this setting controls
+                                    </div>
+                                </div>
+
+                                <!-- Form Actions -->
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'admin_panel:settings_list' %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> {{ form_action }} Setting
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Setting Type Guidelines -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-info-circle"></i> Setting Type Guidelines
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Time Settings</h6>
+                                    <ul class="small text-muted">
+                                        <li><code>*_duration</code>, <code>*_time</code>: Use HH:MM format or minutes</li>
+                                        <li>Example: <code>09:00</code> or <code>60</code></li>
+                                    </ul>
+                                    
+                                    <h6>Numeric Settings</h6>
+                                    <ul class="small text-muted">
+                                        <li><code>*_count</code>, <code>*_limit</code>, <code>*_max</code>: Use integers</li>
+                                        <li>Example: <code>5</code>, <code>100</code></li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Boolean Settings</h6>
+                                    <ul class="small text-muted">
+                                        <li><code>*_enabled</code>, <code>*_active</code>: Use true/false</li>
+                                        <li>Example: <code>true</code>, <code>false</code></li>
+                                    </ul>
+                                    
+                                    <h6>Email Settings</h6>
+                                    <ul class="small text-muted">
+                                        <li><code>*_email</code>: Use valid email format</li>
+                                        <li>Example: <code>admin@example.com</code></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const keyField = document.querySelector('input[name="key"]');
+    const valueField = document.querySelector('textarea[name="value"]');
+    
+    if (keyField && valueField) {
+        keyField.addEventListener('input', function() {
+            const key = this.value.toLowerCase();
+            let placeholder = 'Enter setting value';
+            
+            if (key.includes('duration') || key.includes('time')) {
+                placeholder = 'e.g., 09:00 or 60 (minutes)';
+            } else if (key.includes('count') || key.includes('limit') || key.includes('max')) {
+                placeholder = 'e.g., 5, 10, 100';
+            } else if (key.includes('enabled') || key.includes('active')) {
+                placeholder = 'e.g., true or false';
+            } else if (key.includes('email')) {
+                placeholder = 'e.g., admin@example.com';
+            } else if (key.includes('json')) {
+                placeholder = 'e.g., {"key": "value"}';
+            }
+            
+            valueField.placeholder = placeholder;
+        });
+    }
+});
+</script>
+{% endblock %}

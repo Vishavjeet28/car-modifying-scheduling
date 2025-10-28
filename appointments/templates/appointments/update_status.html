@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}Work Management - CarModX{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-tools"></i> Work Management - #{{ appointment.id }}</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Work Details -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-cog"></i> Service Details:</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Service:</strong> {{ appointment.selected_service.name }}</li>
+                                <li><strong>Category:</strong> {{ appointment.selected_service.category.name }}</li>
+                                <li><strong>Price:</strong> <span class="text-success">₹{{ appointment.selected_service.base_price }}</span></li>
+                                <li><strong>Est. Duration:</strong> {{ appointment.selected_service.duration_hours|floatformat:1 }}h</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-user"></i> Customer & Vehicle:</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Customer:</strong> {{ appointment.customer.get_full_name|default:appointment.customer.username }}</li>
+                                <li><strong>Vehicle:</strong> {{ appointment.vehicle_year }} {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}</li>
+                                <li><strong>License:</strong> {{ appointment.vehicle_license }}</li>
+                                <li><strong>Scheduled:</strong> {{ appointment.slot_date|date:"M d, Y" }} at {{ appointment.get_slot_time_display }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Status -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <strong>Current Status:</strong> 
+                                <span class="badge bg-{{ appointment.get_status_color }} fs-6">
+                                    {{ appointment.get_status_display }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-{{ appointment.get_priority_color }}">
+                                <strong>Priority:</strong> 
+                                <span class="badge bg-{{ appointment.get_priority_color }} fs-6">
+                                    {{ appointment.get_priority_display }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Assignment Info -->
+                    {% if appointment.assigned_employee %}
+                    <div class="alert alert-success">
+                        <strong><i class="fas fa-user-check"></i> Assigned to:</strong> 
+                        {{ appointment.assigned_employee.get_full_name|default:appointment.assigned_employee.username }}
+                        {% if appointment.work_started_at %}
+                            <br><small>Started: {{ appointment.work_started_at|date:"M d, Y H:i" }}</small>
+                        {% endif %}
+                        {% if appointment.estimated_completion %}
+                            <br><small>Est. Completion: {{ appointment.estimated_completion|date:"M d, Y H:i" }}</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Special Requirements -->
+                    {% if appointment.special_requirements %}
+                    <div class="alert alert-warning">
+                        <strong><i class="fas fa-exclamation-triangle"></i> Special Requirements:</strong><br>
+                        {{ appointment.special_requirements }}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Work Notes -->
+                    {% if appointment.work_notes %}
+                    <div class="alert alert-secondary">
+                        <strong><i class="fas fa-sticky-note"></i> Work Notes:</strong><br>
+                        {{ appointment.work_notes|linebreaks }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Self Assignment -->
+                    {% if can_assign_self %}
+                    <form method="post" class="mb-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="assign_self">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-hand-paper"></i> Assign to Me
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    <!-- Start Work -->
+                    {% if can_start_work %}
+                    <form method="post" class="mb-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="start_work">
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="fas fa-play"></i> Start Work
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    <!-- Complete Work -->
+                    {% if can_complete_work %}
+                    <div class="card border-success mb-3">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0">Complete Work</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="complete_work">
+                                <div class="form-group mb-3">
+                                    <label for="work_notes">Completion Notes:</label>
+                                    <textarea name="work_notes" id="work_notes" class="form-control" rows="3" 
+                                              placeholder="Add any notes about the completed work..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-check"></i> Mark as Completed
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Manual Status Update -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Manual Update</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_status">
+                                
+                                <div class="form-group mb-3">
+                                    <label for="status">Status:</label>
+                                    <select name="status" id="status" class="form-control" required>
+                                        {% for value, display in status_choices %}
+                                            <option value="{{ value }}" {% if value == appointment.status %}selected{% endif %}>
+                                                {{ display }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="priority">Priority:</label>
+                                    <select name="priority" id="priority" class="form-control">
+                                        {% for value, display in priority_choices %}
+                                            <option value="{{ value }}" {% if value == appointment.priority %}selected{% endif %}>
+                                                {{ display }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="work_notes_manual">Work Notes:</label>
+                                    <textarea name="work_notes" id="work_notes_manual" class="form-control" rows="3" 
+                                              placeholder="Add work progress notes...">{{ appointment.work_notes }}</textarea>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-save"></i> Update
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation -->
+            <div class="card mt-3">
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'appointments:appointment_detail' appointment.id %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Details
+                        </a>
+                        <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-list"></i> All Work
+                        </a>
+                        <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-info">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.alert {
+    border-left: 4px solid;
+}
+.alert-info {
+    border-left-color: #17a2b8;
+}
+.alert-success {
+    border-left-color: #28a745;
+}
+.alert-warning {
+    border-left-color: #ffc107;
+}
+.alert-danger {
+    border-left-color: #dc3545;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Appointment Management - CarModX{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="display-6 fw-bold">Appointment Management</h1>
+                <a href="{% url 'accounts:employee_dashboard' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Search and Filter -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-search"></i> Search & Filter</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="search" class="form-label">Search</label>
+                            <input type="text" name="search" class="form-control" placeholder="Customer, vehicle, service..." value="{{ search_form.search.value|default:'' }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="status" class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">All Statuses</option>
+                                <option value="pending" {% if search_form.status.value == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="confirmed" {% if search_form.status.value == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                                <option value="in_progress" {% if search_form.status.value == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                <option value="completed" {% if search_form.status.value == 'completed' %}selected{% endif %}>Completed</option>
+                                <option value="cancelled" {% if search_form.status.value == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="priority" class="form-label">Priority</label>
+                            <select name="priority" class="form-select">
+                                <option value="">All Priorities</option>
+                                <option value="low" {% if search_form.priority.value == 'low' %}selected{% endif %}>Low</option>
+                                <option value="medium" {% if search_form.priority.value == 'medium' %}selected{% endif %}>Medium</option>
+                                <option value="high" {% if search_form.priority.value == 'high' %}selected{% endif %}>High</option>
+                                <option value="urgent" {% if search_form.priority.value == 'urgent' %}selected{% endif %}>Urgent</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_from" class="form-label">From Date</label>
+                            <input type="date" name="date_from" class="form-control" value="{{ search_form.date_from.value|default:'' }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_to" class="form-label">To Date</label>
+                            <input type="date" name="date_to" class="form-control" value="{{ search_form.date_to.value|default:'' }}">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Appointments Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Appointments ({{ appointments|length }} found)</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" onclick="window.print()">
+                            <i class="fas fa-print"></i> Print
+                        </button>
+                        <button class="btn btn-outline-success" onclick="exportToCSV()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if appointments %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="appointments-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Customer</th>
+                                        <th>Service</th>
+                                        <th>Date & Time</th>
+                                        <th>Vehicle</th>
+                                        <th>Employee</th>
+                                        <th>Status</th>
+                                        <th>Priority</th>
+                                        <th>Price</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in appointments %}
+                                    <tr>
+                                        <td>
+                                            <strong>#{{ appointment.id }}</strong>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ appointment.customer.get_full_name }}</strong><br>
+                                                <small class="text-muted">{{ appointment.customer.email }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ appointment.service.name }}</strong><br>
+                                                <small class="text-muted">{{ appointment.service.category.name }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ appointment.time_slot.date|date:"M d, Y" }}</strong><br>
+                                                <small class="text-muted">{{ appointment.time_slot.start_time|time:"g:i A" }} - {{ appointment.time_slot.end_time|time:"g:i A" }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ appointment.vehicle_make }} {{ appointment.vehicle_model }}</strong><br>
+                                                <small class="text-muted">{{ appointment.vehicle_year }} - {{ appointment.vehicle_license }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if appointment.employee %}
+                                                <span class="badge bg-info">{{ appointment.employee.user.get_full_name }}</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Unassigned</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if appointment.status == 'confirmed' %}success{% elif appointment.status == 'pending' %}warning{% elif appointment.status == 'in_progress' %}info{% elif appointment.status == 'completed' %}primary{% elif appointment.status == 'cancelled' %}danger{% else %}secondary{% endif %}">
+                                                {{ appointment.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if appointment.priority == 'urgent' %}danger{% elif appointment.priority == 'high' %}warning{% elif appointment.priority == 'medium' %}info{% else %}secondary{% endif %}">
+                                                {{ appointment.get_priority_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <strong>₹{{ appointment.estimated_price }}</strong>
+                                            {% if appointment.final_price %}
+                                                <br><small class="text-success">Final: ₹{{ appointment.final_price }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'appointments:appointment_detail' appointment.id %}" class="btn btn-outline-primary" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{% url 'appointments:update_status' appointment.id %}" class="btn btn-outline-success" title="Update Status">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        {% if appointments.has_other_pages %}
+                        <div class="card-footer">
+                            <nav aria-label="Appointments pagination">
+                                <ul class="pagination justify-content-center mb-0">
+                                    {% if appointments.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ appointments.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.priority %}&priority={{ request.GET.priority }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Previous</a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    {% for num in appointments.paginator.page_range %}
+                                    {% if appointments.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                    {% elif num > appointments.number|add:'-3' and num < appointments.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.priority %}&priority={{ request.GET.priority }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if appointments.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ appointments.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.priority %}&priority={{ request.GET.priority }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Next</a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                            <h4>No appointments found</h4>
+                            <p class="text-muted">Try adjusting your search criteria.</p>
+                            <a href="{% url 'appointments:appointment_list' %}" class="btn btn-primary">Clear Filters</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function exportToCSV() {
+    const table = document.getElementById('appointments-table');
+    const rows = table.querySelectorAll('tr');
+    let csv = [];
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = [], cols = rows[i].querySelectorAll('td, th');
+        for (let j = 0; j < cols.length - 1; j++) { // Exclude actions column
+            let cellText = cols[j].innerText.replace(/\n/g, ' ').trim();
+            row.push('"' + cellText + '"');
+        }
+        csv.push(row.join(','));
+    }
+    
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'appointments.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

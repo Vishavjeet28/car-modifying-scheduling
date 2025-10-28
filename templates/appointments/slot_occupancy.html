@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Workshop Slot Occupancy - CarModX{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-calendar-check"></i> Workshop Slot Occupancy</h2>
+                    <p class="text-muted">Global view of workshop capacity and slot availability</p>
+                </div>
+                <div>
+                    <form method="get" class="d-flex align-items-center">
+                        <label for="date" class="me-2"><strong>Date:</strong></label>
+                        <input type="date" 
+                               name="date" 
+                               id="date" 
+                               value="{{ selected_date|date:'Y-m-d' }}" 
+                               class="form-control me-2"
+                               onchange="this.form.submit()">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> View
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Alert about daily capacity -->
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <strong>Daily Workshop Capacity:</strong> The workshop can handle a maximum of <strong>5 appointments per day</strong> 
+                across all time slots. Each appointment occupies one of the 5 daily slots regardless of the time period or service type.
+                Once 5 appointments are booked for a day, no additional bookings are accepted for that date.
+            </div>
+
+            <!-- Daily Capacity Overview -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-calendar-day"></i> Daily Workshop Capacity for {{ selected_date|date:"F d, Y" }}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 bg-light">
+                                        <h3 class="text-primary">{{ daily_details.total_daily_capacity }}</h3>
+                                        <p class="mb-0">Total Daily Capacity</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 {% if daily_details.daily_occupied > 0 %}bg-warning{% else %}bg-light{% endif %}">
+                                        <h3 class="{% if daily_details.daily_occupied > 0 %}text-dark{% else %}text-muted{% endif %}">{{ daily_details.daily_occupied }}</h3>
+                                        <p class="mb-0">Appointments Booked</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 {% if daily_details.daily_remaining > 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+                                        <h3>{{ daily_details.daily_remaining }}</h3>
+                                        <p class="mb-0">Slots Remaining</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 bg-info text-white">
+                                        <h3>{% widthratio daily_details.daily_occupied daily_details.total_daily_capacity 100 %}%</h3>
+                                        <p class="mb-0">Capacity Used</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Progress Bar -->
+                            <div class="mt-3">
+                                <div class="progress" style="height: 25px;">
+                                    <div class="progress-bar {% if daily_details.daily_occupied == daily_details.total_daily_capacity %}bg-danger{% elif daily_details.daily_occupied >= 4 %}bg-warning{% else %}bg-success{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {% widthratio daily_details.daily_occupied daily_details.total_daily_capacity 100 %}%"
+                                         aria-valuenow="{% widthratio daily_details.daily_occupied daily_details.total_daily_capacity 100 %}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ daily_details.daily_occupied }}/{{ daily_details.total_daily_capacity }} slots used
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Slot Breakdown -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h4><i class="fas fa-clock"></i> Time Slot Breakdown</h4>
+                </div>
+                {% for slot in slot_occupancy %}
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="card h-100 {% if slot.occupied %}border-warning{% else %}border-success{% endif %}">
+                        <div class="card-header {% if slot.occupied %}bg-warning text-dark{% else %}bg-success text-white{% endif %}">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-clock"></i> {{ slot.display }}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if slot.occupied %}
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span><strong>Status:</strong></span>
+                                    <span class="badge bg-warning text-dark">Occupied</span>
+                                </div>
+                                
+                                <!-- Appointment Details -->
+                                {% for appointment in slot.appointments %}
+                                <div class="mb-2 p-2 bg-light rounded border-start border-warning border-3">
+                                    <div class="small">
+                                        <strong>{{ appointment.selected_service.name }}</strong><br>
+                                        <i class="fas fa-user"></i> {{ appointment.customer.get_full_name|default:appointment.customer.username }}<br>
+                                        <i class="fas fa-car"></i> {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}<br>
+                                        <span class="badge bg-{{ appointment.get_status_color }}">{{ appointment.get_status_display }}</span>
+                                        {% if appointment.assigned_employee %}
+                                        <br><i class="fas fa-user-tie"></i> {{ appointment.assigned_employee.get_full_name }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                    <p class="mb-0">Available</p>
+                                    {% if daily_details.daily_remaining <= 0 %}
+                                    <small class="text-danger">Daily capacity reached</small>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Summary Statistics -->
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h4>5</h4>
+                            <p class="mb-0">Daily Capacity</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-{% if daily_details.daily_occupied > 0 %}warning{% else %}secondary{% endif %} text-white">
+                        <div class="card-body text-center">
+                            <h4>{{ daily_details.daily_occupied }}</h4>
+                            <p class="mb-0">Booked Today</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-{% if daily_details.daily_remaining > 0 %}success{% else %}danger{% endif %} text-white">
+                        <div class="card-body text-center">
+                            <h4>{{ daily_details.daily_remaining }}</h4>
+                            <p class="mb-0">Remaining Slots</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h4>{{ slot_occupancy|length }}</h4>
+                            <p class="mb-0">Time Periods</p>
+                            <small>(9AM - 5PM)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="text-center mt-4">
+                <a href="{% url 'appointments:appointment_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-list"></i> View All Appointments
+                </a>
+                <a href="{% url 'appointments:book_appointment' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Book New Appointment
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh every 30 seconds to show real-time updates
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

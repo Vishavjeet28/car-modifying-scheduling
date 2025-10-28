@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Select Time Slot - CarModX{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0"><i class="fas fa-clock"></i> Select Time Slot</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Service Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <h4>{{ service.name }}</h4>
+                            <p class="text-muted">{{ service.description }}</p>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-primary me-2">{{ service.category.name }}</span>
+                                <span class="text-muted me-3">
+                                    <i class="fas fa-clock"></i> {{ service.duration_hours|floatformat:1 }}h
+                                </span>
+                                <span class="h5 text-primary mb-0">
+                                    <i class="fas fa-rupee-sign"></i> ₹{{ service.base_price }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            {% if service.image %}
+                            <img src="{{ service.image.url }}" alt="{{ service.name }}" class="img-fluid rounded" style="max-height: 100px;">
+                            {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 100px; width: 100px;">
+                                <i class="{{ service.category.icon|default:'fas fa-cog' }} fa-2x text-muted"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Vehicle Information -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-car"></i> Vehicle Information</h6>
+                        <p class="mb-0">
+                            <strong>{{ booking_data.vehicle_make }} {{ booking_data.vehicle_model }}</strong> ({{ booking_data.vehicle_year }})<br>
+                            License: {{ booking_data.vehicle_license }}
+                        </p>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Time Slot Selection -->
+                    <form method="post" id="time-slot-form">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="{% url 'services:service_detail' service.id %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> Back to Service
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg" id="book-appointment-btn">
+                                <i class="fas fa-calendar-check"></i> Book Appointment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('time-slot-form');
+    const submitBtn = document.getElementById('book-appointment-btn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            // Show loading state
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Booking...';
+            submitBtn.disabled = true;
+            
+            // Re-enable button after 15 seconds as fallback
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> Book Appointment';
+            }, 15000);
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,436 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Book Appointment - CarModX{% endblock %}
+
+{% block extra_css %}
+<style>
+.slot-info {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 4px solid #007bff;
+}
+.slot-capacity {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 0.9em;
+}
+.slot-full {
+    color: #dc3545;
+    font-weight: bold;
+}
+.slot-available {
+    color: #28a745;
+    font-weight: bold;
+}
+.slot-limited {
+    color: #fd7e14;
+    font-weight: bold;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-calendar-plus"></i> Book Your Appointment</h4>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Daily Capacity Information -->
+                    <div class="slot-info">
+                        <h6><i class="fas fa-info-circle"></i> Daily Workshop Capacity Information</h6>
+                        <p class="mb-2">
+                            Our workshop can handle a maximum of <strong>5 appointments per day</strong> across all time slots. 
+                            Once 5 appointments are booked for a specific date, no additional bookings are accepted for that day.
+                        </p>
+                        <div class="small text-muted">
+                            <i class="fas fa-clock"></i> Available time slots: 9:00 AM, 11:00 AM, 1:00 PM, 3:00 PM, 5:00 PM<br>
+                            <i class="fas fa-calendar"></i> Each date has 5 total appointment slots regardless of time period chosen
+                        </div>
+                    </div>
+
+                    <!-- Current Availability Display -->
+                    <div id="current-availability" class="mb-4">
+                        <h6><i class="fas fa-calendar-check"></i> Current Slot Availability</h6>
+                        <div class="row" id="today-slots">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading current availability...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post" id="booking-form">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.selected_service.id_for_label }}" class="form-label">
+                                    <i class="fas fa-tools"></i> Select Service *
+                                </label>
+                                {{ form.selected_service }}
+                                {% if form.selected_service.errors %}
+                                    <div class="text-danger">{{ form.selected_service.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.slot_date.id_for_label }}" class="form-label">
+                                    <i class="fas fa-calendar"></i> Appointment Date *
+                                </label>
+                                {{ form.slot_date }}
+                                {% if form.slot_date.errors %}
+                                    <div class="text-danger">{{ form.slot_date.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.slot_time.id_for_label }}" class="form-label">
+                                <i class="fas fa-clock"></i> Available Time Slots *
+                            </label>
+                            {{ form.slot_time }}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle text-success"></i> 
+                                <strong>Only available time slots appear in the dropdown above.</strong>
+                                <br>
+                                <i class="fas fa-ban text-danger"></i>
+                                If a time slot is already booked, it will not be shown until that service is completed.
+                                <br>
+                                <i class="fas fa-check-circle text-info"></i>
+                                Completed or cancelled services free up their time slots for new bookings.
+                            </div>
+                            <div id="slot-capacity-info" class="mt-3"></div>
+                            {% if form.slot_time.errors %}
+                                <div class="text-danger">{{ form.slot_time.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Vehicle Information -->
+                        <h5 class="mt-4 mb-3"><i class="fas fa-car"></i> Vehicle Information</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.vehicle_make.id_for_label }}" class="form-label">Vehicle Make *</label>
+                                {{ form.vehicle_make }}
+                                {% if form.vehicle_make.errors %}
+                                    <div class="text-danger">{{ form.vehicle_make.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.vehicle_model.id_for_label }}" class="form-label">Vehicle Model *</label>
+                                {{ form.vehicle_model }}
+                                {% if form.vehicle_model.errors %}
+                                    <div class="text-danger">{{ form.vehicle_model.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.vehicle_year.id_for_label }}" class="form-label">Vehicle Year *</label>
+                                {{ form.vehicle_year }}
+                                {% if form.vehicle_year.errors %}
+                                    <div class="text-danger">{{ form.vehicle_year.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.vehicle_license.id_for_label }}" class="form-label">License Plate *</label>
+                                {{ form.vehicle_license }}
+                                {% if form.vehicle_license.errors %}
+                                    <div class="text-danger">{{ form.vehicle_license.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.special_requirements.id_for_label }}" class="form-label">
+                                Special Requirements
+                            </label>
+                            {{ form.special_requirements }}
+                            {% if form.special_requirements.errors %}
+                                <div class="text-danger">{{ form.special_requirements.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Form Errors -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'services:service_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Services
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-calendar-check"></i> Book Appointment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('id_slot_date');
+    const timeSelect = document.getElementById('id_slot_time');
+    const capacityInfo = document.getElementById('slot-capacity-info');
+    const currentAvailability = document.getElementById('today-slots');
+
+    console.log('🚀 Page loaded, setting up dropdown functionality');
+    console.log('📅 Date input found:', dateInput !== null);
+    console.log('⏰ Time select found:', timeSelect !== null);
+
+    function loadAvailableSlots() {
+        console.log('🔍 loadAvailableSlots() called');
+        const selectedDate = dateInput.value;
+        console.log('📅 Selected date:', selectedDate);
+        
+        if (!selectedDate) {
+            console.log('❌ No date selected, resetting dropdown');
+            timeSelect.innerHTML = '<option value="">Select a time slot</option>';
+            capacityInfo.innerHTML = '';
+            return;
+        }
+
+        // Show loading
+        console.log('⏳ Loading slots for date:', selectedDate);
+        timeSelect.innerHTML = '<option value="">Loading available slots...</option>';
+        capacityInfo.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Loading slot information...';
+
+        const apiUrl = `{% url 'appointments:available_slots_api' %}?date=${selectedDate}`;
+        console.log('🌐 Fetching from API:', apiUrl);
+
+        fetch(apiUrl)
+            .then(response => {
+                console.log('📡 API Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('📋 API Response data:', data);
+                
+                // Always clear dropdown before adding new options
+                while (timeSelect.firstChild) {
+                    timeSelect.removeChild(timeSelect.firstChild);
+                }
+                console.log('🧹 Dropdown cleared');
+
+                if (data.slots && data.slots.length > 0) {
+                    console.log(`✅ Found ${data.slots.length} available slots`);
+                    
+                    // Add default option for time selection
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = 'Select a time slot';
+                    timeSelect.appendChild(defaultOption);
+                    console.log('➕ Added default option');
+                    
+                    // Only add available slots
+                    data.slots.forEach(slot => {
+                        const option = document.createElement('option');
+                        option.value = slot.time;
+                        option.textContent = slot.display;
+                        timeSelect.appendChild(option);
+                        console.log(`➕ Added slot: ${slot.time} - ${slot.display}`);
+                    });
+                    
+                    // Force dropdown to show default after repopulating
+                    timeSelect.value = '';
+                    console.log(`✅ Dropdown populated with ${data.slots.length} slots, reset to default`);
+                } else {
+                    console.log('❌ No available slots found');
+                    // No available slots, show disabled message only
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'All time slots are currently occupied for this date';
+                    option.disabled = true;
+                    timeSelect.appendChild(option);
+                    timeSelect.value = '';
+                    console.log('➕ Added "no slots" message');
+                }
+
+                // Show detailed capacity information
+                let capacityHtml = '<div class="row">';
+                if (data.available_slots !== undefined) {
+                    const statusClass = data.available_slots > 0 ? 'alert-success' : 'alert-warning';
+                    capacityHtml += `
+                        <div class="col-12 mb-3">
+                            <div class="alert ${statusClass}">
+                                <strong>Availability:</strong> ${data.available_slots} out of ${data.total_slots} time slots available for this date
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                capacityHtml += '<div class="col-12 mb-3"><h6>All Time Slots Status:</h6></div>';
+                
+                if (data.all_slots) {
+                    data.all_slots.forEach(slot => {
+                        let statusClass = 'slot-available text-success';
+                        let statusIcon = 'fas fa-check-circle';
+                        let statusText = 'Available';
+                        let cardClass = 'border-success';
+                        let appointmentInfo = '';
+                        
+                        if (slot.occupied) {
+                            statusClass = 'slot-full text-danger';
+                            statusIcon = 'fas fa-times-circle';
+                            statusText = 'Occupied';
+                            cardClass = 'border-danger bg-light';
+                            
+                            if (slot.appointment) {
+                                appointmentInfo = `
+                                    <small class="text-muted d-block">
+                                        Service: ${slot.appointment.service}<br>
+                                        Status: ${slot.appointment.status}
+                                    </small>
+                                `;
+                            }
+                        }
+
+                        capacityHtml += `
+                            <div class="col-md-6 mb-2">
+                                <div class="card ${cardClass} h-100">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span><strong>${slot.display}</strong></span>
+                                            <span class="${statusClass}">
+                                                <i class="${statusIcon}"></i>
+                                                ${statusText}
+                                            </span>
+                                        </div>
+                                        ${appointmentInfo}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                capacityHtml += '</div>';
+                
+                if (data.capacity_info) {
+                    capacityHtml += `<div class="small text-muted mt-2"><i class="fas fa-info"></i> ${data.capacity_info}</div>`;
+                }
+                
+                capacityInfo.innerHTML = capacityHtml;
+            })
+            .catch(error => {
+                console.error('Error loading slots:', error);
+                timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+                capacityInfo.innerHTML = '<div class="text-danger">Error loading slot information</div>';
+            });
+    }
+
+    function loadCurrentAvailability() {
+        // Load availability for today and next few days
+        const today = new Date();
+        const dates = [];
+        
+        // Generate next 7 days
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + i);
+            dates.push(date.toISOString().split('T')[0]);
+        }
+
+        let availabilityHtml = '<h6 class="mb-3">Next 7 Days Availability:</h6><div class="row">';
+        
+        Promise.all(dates.map(date => 
+            fetch(`{% url 'appointments:available_slots_api' %}?date=${date}`)
+                .then(response => response.json())
+                .then(data => ({ date, data }))
+        ))
+        .then(results => {
+            results.forEach(({ date, data }) => {
+                const dateObj = new Date(date + 'T00:00:00');
+                const isToday = date === today.toISOString().split('T')[0];
+                const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                const dayDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                
+                let cardClass = 'border-success';
+                let badgeClass = 'bg-success';
+                let statusText = 'Available';
+                let availableCount = data.slots ? data.slots.length : 0;
+                
+                if (data.daily_capacity) {
+                    if (data.daily_capacity.remaining === 0) {
+                        cardClass = 'border-danger';
+                        badgeClass = 'bg-danger';
+                        statusText = 'Full';
+                    } else if (data.daily_capacity.remaining <= 2) {
+                        cardClass = 'border-warning';
+                        badgeClass = 'bg-warning text-dark';
+                        statusText = 'Limited';
+                    }
+                }
+
+                availabilityHtml += `
+                    <div class="col-lg-3 col-md-4 col-sm-6 mb-2">
+                        <div class="card ${cardClass} h-100">
+                            <div class="card-body p-2 text-center">
+                                <div class="small">
+                                    <strong>${dayName}</strong><br>
+                                    ${dayDate}${isToday ? ' (Today)' : ''}
+                                </div>
+                                <div class="mt-1">
+                                    <span class="badge ${badgeClass}">
+                                        ${data.daily_capacity ? data.daily_capacity.remaining : 5}/5 slots
+                                    </span>
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    ${statusText}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            availabilityHtml += '</div>';
+            currentAvailability.innerHTML = availabilityHtml;
+        })
+        .catch(error => {
+            console.error('Error loading availability:', error);
+            currentAvailability.innerHTML = '<div class="alert alert-danger">Error loading availability information</div>';
+        });
+    }
+
+    console.log('🚀 Setting up event listeners...');
+    console.log('📅 Date input element:', dateInput);
+    console.log('🕒 Time select element:', timeSelect);
+    
+    // Load slots when date changes
+    dateInput.addEventListener('change', function(event) {
+        console.log('📅 Date changed! New value:', event.target.value);
+        loadAvailableSlots();
+    });
+    console.log('✅ Date change event listener added');
+    
+    // Load slots on page load if date is already selected
+    if (dateInput.value) {
+        console.log('📅 Date already selected on page load:', dateInput.value);
+        loadAvailableSlots();
+    } else {
+        console.log('📅 No date selected on page load');
+    }
+
+    // Load current availability when page loads
+    loadCurrentAvailability();
+    console.log('✅ Page setup complete');
+});
+</script>
+{% endblock %}

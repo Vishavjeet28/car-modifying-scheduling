@@ -1,0 +1,487 @@
+{% extends 'admin_panel/base.html' %}
+{% load admin_extras %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block custom_breadcrumb %}
+    {% admin_breadcrumb "Employees" "employee_list" %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .employee-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 16px;
+    }
+    
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .employee-card {
+        transition: transform 0.2s;
+    }
+    
+    .employee-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .performance-indicator {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">{{ page_title }}</h1>
+            <p class="text-muted mb-0">Manage employee accounts and profiles</p>
+        </div>
+        <a href="{% url 'admin_panel:employee_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add Employee
+        </a>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_employees }}</h4>
+                            <p class="mb-0">Total Employees</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ active_employees }}</h4>
+                            <p class="mb-0">Active Employees</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ inactive_employees }}</h4>
+                            <p class="mb-0">Inactive Employees</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-times fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ specializations|length }}</h4>
+                            <p class="mb-0">Specializations</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-tools fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    {{ search_form.search }}
+                </div>
+                <div class="col-md-3">
+                    {{ search_form.status }}
+                </div>
+                <div class="col-md-3">
+                    {{ search_form.specialization }}
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="fas fa-search me-2"></i>Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bulk Actions -->
+    <div class="card mb-4" id="bulk-actions-card" style="display: none;">
+        <div class="card-body">
+            <form method="post" action="{% url 'admin_panel:employee_bulk_action' %}" id="bulk-action-form">
+                {% csrf_token %}
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        {{ bulk_form.action }}
+                    </div>
+                    <div class="col-md-3" id="specialization-field" style="display: none;">
+                        {{ bulk_form.new_specialization }}
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-warning" id="bulk-submit-btn">
+                            <i class="fas fa-cogs me-2"></i>Apply Action
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="cancel-bulk-btn">
+                            Cancel
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <span id="selected-count" class="text-muted">0 employees selected</span>
+                    </div>
+                </div>
+                {{ bulk_form.selected_employees }}
+            </form>
+        </div>
+    </div>
+
+    <!-- Employee List -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Employees ({{ employees|length }})</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="select-all-btn">
+                        <i class="fas fa-check-square me-1"></i>Select All
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-selection-btn">
+                        <i class="fas fa-square me-1"></i>Clear Selection
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            {% if employees %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="50">
+                                    <input type="checkbox" class="form-check-input" id="select-all-checkbox">
+                                </th>
+                                <th>Employee</th>
+                                <th>Employee ID</th>
+                                <th>Contact</th>
+                                <th>Specialization</th>
+                                <th>Hire Date</th>
+                                <th>Status</th>
+                                <th>Performance</th>
+                                <th width="150">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for employee in employees %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="form-check-input employee-checkbox" 
+                                           value="{{ employee.id }}" data-employee-name="{{ employee.user.get_full_name }}">
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="employee-avatar me-3">
+                                            {{ employee.user.first_name|first }}{{ employee.user.last_name|first }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">{{ employee.user.get_full_name }}</div>
+                                            <small class="text-muted">{{ employee.user.username }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ employee.employee_id }}</span>
+                                </td>
+                                <td>
+                                    <div>
+                                        <i class="fas fa-envelope me-1"></i>{{ employee.user.email }}
+                                    </div>
+                                    {% if employee.user.phone_number %}
+                                    <div>
+                                        <i class="fas fa-phone me-1"></i>{{ employee.user.phone_number }}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if employee.specialization %}
+                                        <span class="badge bg-info">{{ employee.specialization }}</span>
+                                    {% else %}
+                                        <span class="text-muted">Not specified</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ employee.hire_date|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if employee.is_active %}
+                                        <span class="badge bg-success status-badge">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger status-badge">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="performance-indicator">
+                                        <div>{{ employee.assigned_appointments.count }} appointments</div>
+                                        <div>{{ employee.completed_appointments_count|default:0 }} completed</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'admin_panel:employee_detail' employee.pk %}" 
+                                           class="btn btn-sm btn-outline-info" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'admin_panel:employee_update' employee.pk %}" 
+                                           class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary toggle-status-btn" 
+                                                data-employee-id="{{ employee.pk }}" 
+                                                data-employee-name="{{ employee.user.get_full_name }}"
+                                                data-current-status="{{ employee.is_active|yesno:'active,inactive' }}"
+                                                title="Toggle Status">
+                                            {% if employee.is_active %}
+                                                <i class="fas fa-user-times"></i>
+                                            {% else %}
+                                                <i class="fas fa-user-check"></i>
+                                            {% endif %}
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <div class="card-footer">
+                    <nav aria-label="Employee pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.specialization %}&specialization={{ request.GET.specialization }}{% endif %}">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.specialization %}&specialization={{ request.GET.specialization }}{% endif %}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.specialization %}&specialization={{ request.GET.specialization }}{% endif %}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.specialization %}&specialization={{ request.GET.specialization }}{% endif %}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No employees found</h5>
+                    <p class="text-muted">Try adjusting your search criteria or add a new employee.</p>
+                    <a href="{% url 'admin_panel:employee_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Add First Employee
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Status Toggle Modal -->
+<div class="modal fade" id="statusToggleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Status Change</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="status-toggle-message"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" id="status-toggle-form" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" id="status-action">
+                    <button type="submit" class="btn btn-primary" id="confirm-status-btn">Confirm</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Bulk selection functionality
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    const employeeCheckboxes = document.querySelectorAll('.employee-checkbox');
+    const bulkActionsCard = document.getElementById('bulk-actions-card');
+    const selectedCountSpan = document.getElementById('selected-count');
+    const bulkActionSelect = document.getElementById('id_action');
+    const specializationField = document.getElementById('specialization-field');
+    const selectedEmployeesInput = document.getElementById('id_selected_employees');
+
+    function updateBulkActions() {
+        const selectedCheckboxes = document.querySelectorAll('.employee-checkbox:checked');
+        const count = selectedCheckboxes.length;
+        
+        if (count > 0) {
+            bulkActionsCard.style.display = 'block';
+            selectedCountSpan.textContent = `${count} employee${count !== 1 ? 's' : ''} selected`;
+            
+            // Update hidden input with selected IDs
+            const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+            selectedEmployeesInput.value = selectedIds.join(',');
+        } else {
+            bulkActionsCard.style.display = 'none';
+            selectedEmployeesInput.value = '';
+        }
+        
+        // Update select all checkbox state
+        selectAllCheckbox.indeterminate = count > 0 && count < employeeCheckboxes.length;
+        selectAllCheckbox.checked = count === employeeCheckboxes.length;
+    }
+
+    // Select all functionality
+    selectAllCheckbox.addEventListener('change', function() {
+        employeeCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateBulkActions();
+    });
+
+    // Individual checkbox change
+    employeeCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    // Select all button
+    document.getElementById('select-all-btn').addEventListener('click', function() {
+        employeeCheckboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        updateBulkActions();
+    });
+
+    // Clear selection button
+    document.getElementById('clear-selection-btn').addEventListener('click', function() {
+        employeeCheckboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        selectAllCheckbox.checked = false;
+        updateBulkActions();
+    });
+
+    // Cancel bulk action
+    document.getElementById('cancel-bulk-btn').addEventListener('click', function() {
+        employeeCheckboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        selectAllCheckbox.checked = false;
+        updateBulkActions();
+    });
+
+    // Show/hide specialization field based on action
+    bulkActionSelect.addEventListener('change', function() {
+        if (this.value === 'change_specialization') {
+            specializationField.style.display = 'block';
+        } else {
+            specializationField.style.display = 'none';
+        }
+    });
+
+    // Status toggle functionality
+    const statusToggleModal = new bootstrap.Modal(document.getElementById('statusToggleModal'));
+    const statusToggleForm = document.getElementById('status-toggle-form');
+    const statusToggleMessage = document.getElementById('status-toggle-message');
+    const statusActionInput = document.getElementById('status-action');
+
+    document.querySelectorAll('.toggle-status-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const employeeId = this.dataset.employeeId;
+            const employeeName = this.dataset.employeeName;
+            const currentStatus = this.dataset.currentStatus;
+            const newAction = currentStatus === 'active' ? 'deactivate' : 'activate';
+            const newStatus = currentStatus === 'active' ? 'deactivate' : 'activate';
+            
+            statusToggleForm.action = `{% url 'admin_panel:employee_toggle_status' 0 %}`.replace('0', employeeId);
+            statusActionInput.value = newAction;
+            statusToggleMessage.textContent = `Are you sure you want to ${newStatus} employee "${employeeName}"?`;
+            
+            statusToggleModal.show();
+        });
+    });
+
+    // Bulk action form submission confirmation
+    document.getElementById('bulk-action-form').addEventListener('submit', function(e) {
+        const action = bulkActionSelect.value;
+        const selectedCount = document.querySelectorAll('.employee-checkbox:checked').length;
+        
+        let message = '';
+        switch(action) {
+            case 'activate':
+                message = `Are you sure you want to activate ${selectedCount} employee(s)?`;
+                break;
+            case 'deactivate':
+                message = `Are you sure you want to deactivate ${selectedCount} employee(s)?`;
+                break;
+            case 'change_specialization':
+                const newSpec = document.getElementById('id_new_specialization').value;
+                message = `Are you sure you want to change specialization to "${newSpec}" for ${selectedCount} employee(s)?`;
+                break;
+        }
+        
+        if (!confirm(message)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

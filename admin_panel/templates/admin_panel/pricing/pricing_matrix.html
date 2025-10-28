@@ -1,0 +1,671 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+{% load admin_extras %}
+
+{% block title %}Pricing Management - Admin Panel{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item active">Pricing</li>
+{% endblock %}
+
+{% block page_title %}Pricing Management{% endblock %}
+
+{% block page_actions %}
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPriceModal">
+        <i class="bi bi-plus-circle me-2"></i>Add Price
+    </button>
+    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#bulkActionsModal">
+        <i class="bi bi-lightning me-2"></i>Bulk Actions
+    </button>
+    <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#importModal">
+        <i class="bi bi-upload me-2"></i>Import CSV
+    </button>
+{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Total Prices</h5>
+                        <h3 class="mb-0">{{ total_prices }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-currency-dollar fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Active Prices</h5>
+                        <h3 class="mb-0">{{ active_prices }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-check-circle fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Services with Pricing</h5>
+                        <h3 class="mb-0">{{ services_with_pricing }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-tools fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Vehicle Types</h5>
+                        <h3 class="mb-0">{{ vehicle_types|length }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-car-front fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Service Selection -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-funnel me-2"></i>Service Selection
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3" id="service-selection-form">
+            <div class="col-md-6">
+                <label for="service-select" class="form-label">Select Service</label>
+                <select class="form-select" id="service-select" name="service">
+                    <option value="">All Services</option>
+                    {% for service in services %}
+                        <option value="{{ service.id }}" {% if selected_service and selected_service.id == service.id %}selected{% endif %}>
+                            {{ service.name }} ({{ service.category.name }}) - ₹{{ service.base_price }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search me-2"></i>Load Pricing
+                    </button>
+                    <a href="{% url 'admin_panel:pricing_matrix' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Reset
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if selected_service %}
+<!-- Pricing Matrix -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-grid me-2"></i>Pricing Matrix for {{ selected_service.name }}
+        </h5>
+        <div>
+            <span class="badge bg-info">Base Price: ₹{{ selected_service.base_price }}</span>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if vehicle_types and complexity_levels %}
+            <div class="table-responsive">
+                <table class="table table-bordered pricing-matrix-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Vehicle Type / Complexity</th>
+                            {% for complexity in complexity_levels %}
+                                <th class="text-center">{{ complexity|title }}</th>
+                            {% endfor %}
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vehicle_type in vehicle_types %}
+                        <tr>
+                            <td class="fw-bold">{{ vehicle_type|title }}</td>
+                            {% for complexity in complexity_levels %}
+                                {% with matrix_key=vehicle_type|add:","|add:complexity %}
+                                <td class="text-center pricing-cell" 
+                                    data-vehicle="{{ vehicle_type }}" 
+                                    data-complexity="{{ complexity }}">
+                                    {% if matrix_key in pricing_matrix %}
+                                        {% with price_data=pricing_matrix|lookup:matrix_key %}
+                                        <div class="price-display" data-price-id="{{ price_data.id }}">
+                                            <span class="price-value">₹{{ price_data.price }}</span>
+                                            {% if price_data.is_active %}
+                                                <span class="badge bg-success ms-1">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary ms-1">Inactive</span>
+                                            {% endif %}
+                                            <div class="price-actions mt-1">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                        onclick="editPrice({{ price_data.id }}, '{{ vehicle_type }}', '{{ complexity }}', '{{ price_data.price }}', {{ price_data.is_active|yesno:'true,false' }})">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                        onclick="deletePrice({{ price_data.id }}, '{{ vehicle_type }}', '{{ complexity }}')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {% endwith %}
+                                    {% else %}
+                                        <div class="empty-price">
+                                            <span class="text-muted">-</span>
+                                            <div class="mt-1">
+                                                <button type="button" class="btn btn-sm btn-outline-success" 
+                                                        onclick="addPrice('{{ vehicle_type }}', '{{ complexity }}')">
+                                                    <i class="bi bi-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                {% endwith %}
+                            {% endfor %}
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-info" 
+                                        onclick="addRowPrice('{{ vehicle_type }}')">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Row
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-grid display-1 text-muted"></i>
+                <h4 class="mt-3">No Pricing Data</h4>
+                <p class="text-muted">No pricing variants exist yet for this service.</p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPriceModal">
+                    <i class="bi bi-plus-circle me-2"></i>Add First Price
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<!-- No Service Selected -->
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-arrow-up-circle display-1 text-muted"></i>
+        <h4 class="mt-3">Select a Service</h4>
+        <p class="text-muted">Choose a service from the dropdown above to view and manage its pricing matrix.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Add Price Modal -->
+<div class="modal fade" id="addPriceModal" tabindex="-1" aria-labelledby="addPriceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPriceModalLabel">Add New Price</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addPriceForm">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="add-service-select" class="form-label">Service</label>
+                        <select class="form-select" id="add-service-select" name="service_id" required>
+                            <option value="">Select Service</option>
+                            {% for service in services %}
+                                <option value="{{ service.id }}" {% if selected_service and selected_service.id == service.id %}selected{% endif %}>
+                                    {{ service.name }} ({{ service.category.name }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-vehicle-type" class="form-label">Vehicle Type</label>
+                        <input type="text" class="form-control" id="add-vehicle-type" name="vehicle_type" 
+                               placeholder="e.g., Sedan, SUV, Sports Car" required list="vehicle-types">
+                        <datalist id="vehicle-types">
+                            {% for vehicle_type in vehicle_types %}
+                                <option value="{{ vehicle_type }}">
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-complexity-level" class="form-label">Complexity Level</label>
+                        <input type="text" class="form-control" id="add-complexity-level" name="complexity_level" 
+                               placeholder="e.g., Basic, Standard, Premium" required list="complexity-levels">
+                        <datalist id="complexity-levels">
+                            {% for complexity in complexity_levels %}
+                                <option value="{{ complexity }}">
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-price" class="form-label">Price (₹)</label>
+                        <input type="number" class="form-control" id="add-price" name="price" 
+                               step="0.01" min="0.01" placeholder="0.00" required>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="add-is-active" name="is_active" checked>
+                        <label class="form-check-label" for="add-is-active">
+                            Active
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i>Add Price
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Price Modal -->
+<div class="modal fade" id="editPriceModal" tabindex="-1" aria-labelledby="editPriceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editPriceModalLabel">Edit Price</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editPriceForm">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" id="edit-price-id" name="price_id">
+                    <div class="mb-3">
+                        <label for="edit-vehicle-type" class="form-label">Vehicle Type</label>
+                        <input type="text" class="form-control" id="edit-vehicle-type" name="vehicle_type" 
+                               placeholder="e.g., Sedan, SUV, Sports Car" required list="vehicle-types">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-complexity-level" class="form-label">Complexity Level</label>
+                        <input type="text" class="form-control" id="edit-complexity-level" name="complexity_level" 
+                               placeholder="e.g., Basic, Standard, Premium" required list="complexity-levels">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-price" class="form-label">Price (₹)</label>
+                        <input type="number" class="form-control" id="edit-price" name="price" 
+                               step="0.01" min="0.01" placeholder="0.00" required>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="edit-is-active" name="is_active">
+                        <label class="form-check-label" for="edit-is-active">
+                            Active
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-2"></i>Update Price
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Actions Modal -->
+<div class="modal fade" id="bulkActionsModal" tabindex="-1" aria-labelledby="bulkActionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkActionsModalLabel">Bulk Pricing Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="bulkActionsForm">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="bulk-service-select" class="form-label">Service</label>
+                        <select class="form-select" id="bulk-service-select" name="service_id" required>
+                            <option value="">Select Service</option>
+                            {% for service in services %}
+                                <option value="{{ service.id }}" {% if selected_service and selected_service.id == service.id %}selected{% endif %}>
+                                    {{ service.name }} ({{ service.category.name }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bulk-action-select" class="form-label">Action</label>
+                        <select class="form-select" id="bulk-action-select" name="action" required>
+                            <option value="">Select Action</option>
+                            <option value="activate_all">Activate All Prices</option>
+                            <option value="deactivate_all">Deactivate All Prices</option>
+                            <option value="delete_all">Delete All Prices</option>
+                            <option value="apply_percentage">Apply Percentage Change</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="percentage-container" style="display: none;">
+                        <label for="bulk-percentage" class="form-label">Percentage Change</label>
+                        <input type="number" class="form-control" id="bulk-percentage" name="percentage" 
+                               step="0.1" placeholder="e.g., 10 for +10%, -5 for -5%">
+                        <div class="form-text">Enter positive number to increase, negative to decrease prices.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-lightning me-2"></i>Apply Action
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Import CSV Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importModalLabel">Import Pricing from CSV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="importForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="csv-file" class="form-label">CSV File</label>
+                        <input type="file" class="form-control" id="csv-file" name="csv_file" accept=".csv" required>
+                        <div class="form-text">
+                            CSV should have columns: service_name, vehicle_type, complexity_level, price
+                        </div>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="overwrite-existing" name="overwrite_existing">
+                        <label class="form-check-label" for="overwrite-existing">
+                            Overwrite existing prices
+                        </label>
+                    </div>
+                    <div class="mt-3">
+                        <h6>CSV Format Example:</h6>
+                        <pre class="bg-light p-2 rounded"><code>service_name,vehicle_type,complexity_level,price
+Oil Change,Sedan,Basic,50.00
+Oil Change,SUV,Basic,60.00
+Brake Service,Sports Car,Premium,200.00</code></pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">
+                        <i class="bi bi-upload me-2"></i>Import Prices
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the price for "<span id="deletePriceInfo"></span>"?</p>
+                <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeletePriceBtn">Delete Price</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.pricing-matrix-table {
+    font-size: 0.9rem;
+}
+
+.pricing-cell {
+    min-width: 120px;
+    vertical-align: middle;
+}
+
+.price-display {
+    padding: 8px;
+}
+
+.price-value {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.price-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.pricing-cell:hover .price-actions {
+    opacity: 1;
+}
+
+.empty-price {
+    padding: 8px;
+    color: #6c757d;
+}
+
+.empty-price button {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.pricing-cell:hover .empty-price button {
+    opacity: 1;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Handle bulk action selection
+    $('#bulk-action-select').change(function() {
+        if ($(this).val() === 'apply_percentage') {
+            $('#percentage-container').show();
+            $('#bulk-percentage').prop('required', true);
+        } else {
+            $('#percentage-container').hide();
+            $('#bulk-percentage').prop('required', false);
+        }
+    });
+    
+    // Handle add price form submission
+    $('#addPriceForm').submit(function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        $.ajax({
+            url: '{% url "admin_panel:price_create" %}',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    showAlert('success', response.message);
+                    $('#addPriceModal').modal('hide');
+                    location.reload(); // Refresh to show new price
+                } else {
+                    showAlert('danger', response.error);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showAlert('danger', response ? response.error : 'An error occurred.');
+            }
+        });
+    });
+    
+    // Handle edit price form submission
+    $('#editPriceForm').submit(function(e) {
+        e.preventDefault();
+        
+        const priceId = $('#edit-price-id').val();
+        const formData = new FormData(this);
+        
+        $.ajax({
+            url: `/admin/pricing/${priceId}/update/`,
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    showAlert('success', response.message);
+                    $('#editPriceModal').modal('hide');
+                    location.reload(); // Refresh to show updated price
+                } else {
+                    showAlert('danger', response.error);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showAlert('danger', response ? response.error : 'An error occurred.');
+            }
+        });
+    });
+    
+    // Handle bulk actions form submission
+    $('#bulkActionsForm').submit(function(e) {
+        e.preventDefault();
+        
+        const action = $('#bulk-action-select').val();
+        if (action === 'delete_all') {
+            if (!confirm('Are you sure you want to delete all prices for this service? This action cannot be undone.')) {
+                return;
+            }
+        }
+        
+        const formData = new FormData(this);
+        
+        $.ajax({
+            url: '{% url "admin_panel:bulk_pricing_update" %}',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    showAlert('success', response.message);
+                    $('#bulkActionsModal').modal('hide');
+                    location.reload(); // Refresh to show changes
+                } else {
+                    showAlert('danger', response.error);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showAlert('danger', response ? response.error : 'An error occurred.');
+            }
+        });
+    });
+});
+
+function addPrice(vehicleType, complexityLevel) {
+    $('#add-vehicle-type').val(vehicleType);
+    $('#add-complexity-level').val(complexityLevel);
+    $('#addPriceModal').modal('show');
+}
+
+function addRowPrice(vehicleType) {
+    $('#add-vehicle-type').val(vehicleType);
+    $('#add-complexity-level').val('');
+    $('#addPriceModal').modal('show');
+}
+
+function editPrice(priceId, vehicleType, complexityLevel, price, isActive) {
+    $('#edit-price-id').val(priceId);
+    $('#edit-vehicle-type').val(vehicleType);
+    $('#edit-complexity-level').val(complexityLevel);
+    $('#edit-price').val(price);
+    $('#edit-is-active').prop('checked', isActive);
+    $('#editPriceModal').modal('show');
+}
+
+function deletePrice(priceId, vehicleType, complexityLevel) {
+    $('#deletePriceInfo').text(`${vehicleType} - ${complexityLevel}`);
+    $('#confirmDeletePriceBtn').off('click').on('click', function() {
+        $.ajax({
+            url: `/admin/pricing/${priceId}/delete/`,
+            method: 'POST',
+            data: {
+                'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                if (response.success) {
+                    showAlert('success', response.message);
+                    $('#deleteConfirmModal').modal('hide');
+                    location.reload(); // Refresh to remove deleted price
+                } else {
+                    showAlert('danger', response.error);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showAlert('danger', response ? response.error : 'An error occurred.');
+            }
+        });
+    });
+    $('#deleteConfirmModal').modal('show');
+}
+
+function showAlert(type, message) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    
+    // Remove existing alerts
+    $('.alert').remove();
+    
+    // Add new alert at the top of content
+    $('.container-fluid').prepend(alertHtml);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(function() {
+        $('.alert').fadeOut();
+    }, 5000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,266 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}{{ form_action }} Category - Admin Panel{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item"><a href="{% url 'admin_panel:category_list' %}">Categories</a></li>
+    <li class="breadcrumb-item active">{{ form_action }} Category</li>
+{% endblock %}
+
+{% block page_title %}{{ form_action }} Category{% endblock %}
+
+{% block page_actions %}
+    <a href="{% url 'admin_panel:category_list' %}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Back to Categories
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-tag me-2"></i>Category Information
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if form_action == 'Update' and service_count > 0 %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Service Impact:</strong> This category has {{ service_count }} total service(s), 
+                    with {{ active_service_count }} currently active. Changes to this category will affect all associated services.
+                </div>
+                {% endif %}
+                
+                <form method="post" id="category-form">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">
+                                    Category Name <span class="text-danger">*</span>
+                                </label>
+                                {{ form.name }}
+                                {% if form.name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.name.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Enter a unique name for this category. This will be displayed to customers.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.is_active.id_for_label }}" class="form-label">Status</label>
+                                <div class="form-check form-switch">
+                                    {{ form.is_active }}
+                                    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                        Active Category
+                                    </label>
+                                </div>
+                                {% if form.is_active.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.is_active.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Inactive categories are hidden from customers but preserved in the system.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.description.errors.0 }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Optional description to help customers understand what services are included in this category.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="{{ form.icon.id_for_label }}" class="form-label">Icon Class</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i id="icon-preview" class="{{ form.icon.value|default:'bi bi-tag' }}"></i>
+                            </span>
+                            {{ form.icon }}
+                        </div>
+                        {% if form.icon.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.icon.errors.0 }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Font Awesome icon class (e.g., "fas fa-car", "fas fa-wrench"). 
+                            <a href="https://fontawesome.com/icons" target="_blank">Browse icons</a>
+                        </div>
+                        
+                        <!-- Icon suggestions -->
+                        <div class="mt-2">
+                            <small class="text-muted">Popular icons:</small>
+                            <div class="d-flex flex-wrap gap-2 mt-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary icon-suggestion" data-icon="fas fa-car">
+                                    <i class="fas fa-car me-1"></i>Car
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary icon-suggestion" data-icon="fas fa-wrench">
+                                    <i class="fas fa-wrench me-1"></i>Wrench
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary icon-suggestion" data-icon="fas fa-cog">
+                                    <i class="fas fa-cog me-1"></i>Settings
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary icon-suggestion" data-icon="fas fa-paint-brush">
+                                    <i class="fas fa-paint-brush me-1"></i>Paint
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary icon-suggestion" data-icon="fas fa-tools">
+                                    <i class="fas fa-tools me-1"></i>Tools
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary icon-suggestion" data-icon="fas fa-oil-can">
+                                    <i class="fas fa-oil-can me-1"></i>Oil
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'admin_panel:category_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>{{ form_action }} Category
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        {% if form_action == 'Update' and object %}
+        <!-- Category Statistics -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bar-chart me-2"></i>Category Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-primary mb-1">{{ service_count }}</h4>
+                            <small class="text-muted">Total Services</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-success mb-1">{{ active_service_count }}</h4>
+                            <small class="text-muted">Active Services</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-info mb-1">{{ object.created_at|date:"M d, Y" }}</h4>
+                            <small class="text-muted">Created Date</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            {% if service_count > 0 %}
+                                <a href="{% url 'admin_panel:service_list' %}?category={{ object.id }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye me-1"></i>View Services
+                                </a>
+                            {% else %}
+                                <span class="text-muted">No Services</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Update icon preview when icon field changes
+    $('#{{ form.icon.id_for_label }}').on('input', function() {
+        const iconClass = $(this).val() || 'bi bi-tag';
+        $('#icon-preview').attr('class', iconClass);
+    });
+    
+    // Handle icon suggestions
+    $('.icon-suggestion').click(function(e) {
+        e.preventDefault();
+        const iconClass = $(this).data('icon');
+        $('#{{ form.icon.id_for_label }}').val(iconClass);
+        $('#icon-preview').attr('class', iconClass);
+        
+        // Highlight selected suggestion
+        $('.icon-suggestion').removeClass('active');
+        $(this).addClass('active');
+    });
+    
+    // Form validation
+    $('#category-form').submit(function(e) {
+        let isValid = true;
+        
+        // Validate required fields
+        const nameField = $('#{{ form.name.id_for_label }}');
+        if (!nameField.val().trim()) {
+            nameField.addClass('is-invalid');
+            isValid = false;
+        } else {
+            nameField.removeClass('is-invalid');
+        }
+        
+        // Validate icon format if provided
+        const iconField = $('#{{ form.icon.id_for_label }}');
+        const iconValue = iconField.val().trim();
+        if (iconValue && !iconValue.match(/^(fas|far|fab|fal)\s+fa-/)) {
+            iconField.addClass('is-invalid');
+            if (!iconField.next('.invalid-feedback').length) {
+                iconField.after('<div class="invalid-feedback">Icon should be a valid Font Awesome class (e.g., "fas fa-car").</div>');
+            }
+            isValid = false;
+        } else {
+            iconField.removeClass('is-invalid');
+            iconField.next('.invalid-feedback').remove();
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Real-time validation for name field
+    $('#{{ form.name.id_for_label }}').on('input', function() {
+        if ($(this).val().trim()) {
+            $(this).removeClass('is-invalid');
+        }
+    });
+    
+    // Real-time validation for icon field
+    $('#{{ form.icon.id_for_label }}').on('input', function() {
+        const iconValue = $(this).val().trim();
+        if (!iconValue || iconValue.match(/^(fas|far|fab|fal)\s+fa-/)) {
+            $(this).removeClass('is-invalid');
+            $(this).next('.invalid-feedback').remove();
+        }
+    });
+});
+</script>
+{% endblock %}

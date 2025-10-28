@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block title %}Assign Appointment #{{ appointment.id }} - CarModX{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0"><i class="fas fa-user-plus"></i> Assign Appointment #{{ appointment.id }}</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Appointment Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-info-circle"></i> Appointment Details</h5>
+                            <p><strong>Service:</strong> {{ appointment.service.name }}</p>
+                            <p><strong>Customer:</strong> {{ appointment.customer.get_full_name }}</p>
+                            <p><strong>Date:</strong> {{ appointment.time_slot.date|date:"F d, Y" }}</p>
+                            <p><strong>Time:</strong> {{ appointment.time_slot.start_time|time:"g:i A" }} - {{ appointment.time_slot.end_time|time:"g:i A" }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge bg-warning">{{ appointment.get_status_display }}</span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-car"></i> Vehicle Information</h5>
+                            <p><strong>Vehicle:</strong> {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}</p>
+                            <p><strong>Year:</strong> {{ appointment.vehicle_year }}</p>
+                            <p><strong>License:</strong> {{ appointment.vehicle_license }}</p>
+                            <p><strong>Estimated Price:</strong> ₹{{ appointment.estimated_price }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if appointment.special_requirements %}
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Special Requirements</h6>
+                        <p class="mb-0">{{ appointment.special_requirements }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if appointment.customer_notes %}
+                    <div class="alert alert-light">
+                        <h6><i class="fas fa-sticky-note"></i> Customer Notes</h6>
+                        <p class="mb-0">{{ appointment.customer_notes }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <!-- Assignment Form -->
+                    <form method="post" id="assign-form">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <h5><i class="fas fa-users"></i> Select Employee</h5>
+                            <p class="text-muted">Choose an employee to assign this appointment to:</p>
+                            
+                            <div class="row">
+                                {% for employee in employees %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="employee_id" value="{{ employee.id }}" id="employee_{{ employee.id }}">
+                                                <label class="form-check-label" for="employee_{{ employee.id }}">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="flex-shrink-0">
+                                                            <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                                <i class="fas fa-user text-white"></i>
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex-grow-1 ms-3">
+                                                            <h6 class="mb-1">{{ employee.user.get_full_name }}</h6>
+                                                            <small class="text-muted">{{ employee.specialization }}</small><br>
+                                                            <small class="text-muted">ID: {{ employee.employee_id }}</small>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="col-12">
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle"></i> No employees available for assignment.
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'appointments:appointment_detail' appointment.id %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> Back to Details
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg" id="assign-btn">
+                                <i class="fas fa-user-plus"></i> Assign Appointment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('assign-form');
+    const submitBtn = document.getElementById('assign-btn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            const selectedEmployee = document.querySelector('input[name="employee_id"]:checked');
+            if (!selectedEmployee) {
+                e.preventDefault();
+                alert('Please select an employee to assign this appointment to.');
+                return;
+            }
+            
+            // Show loading state
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Assigning...';
+            submitBtn.disabled = true;
+            
+            // Re-enable button after 15 seconds as fallback
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Assign Appointment';
+            }, 15000);
+        });
+    }
+});
+</script>
+{% endblock %}

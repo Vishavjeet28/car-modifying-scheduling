@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Appointment #{{ appointment.id }} - CarModX{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Appointment #{{ appointment.id }}</h4>
+                    <span class="badge badge-lg
+                        {% if appointment.status == 'booked' %}badge-success
+                        {% elif appointment.status == 'cancelled' %}badge-danger
+                        {% elif appointment.status == 'completed' %}badge-primary
+                        {% endif %}">
+                        {{ appointment.get_status_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Service Details</h6>
+                            <p><strong>Service:</strong> {{ appointment.selected_service.name }}</p>
+                            <p><strong>Category:</strong> {{ appointment.selected_service.category.name }}</p>
+                            <p><strong>Price:</strong> <span class="text-success fw-bold">₹{{ appointment.selected_service.base_price|floatformat:2 }}</span></p>
+                            <p><strong>Duration:</strong> {{ appointment.selected_service.duration_hours|floatformat:1 }} hours</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Appointment Schedule</h6>
+                            <p><strong>Date:</strong> {{ appointment.slot_date|date:"F d, Y" }}</p>
+                            <p><strong>Time:</strong> {{ appointment.get_slot_time_display }}</p>
+                            <p><strong>Status:</strong> {{ appointment.get_status_display }}</p>
+                            <p><strong>Booked on:</strong> {{ appointment.created_at|date:"M d, Y H:i" }}</p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Vehicle Information</h6>
+                            <p><strong>Make:</strong> {{ appointment.vehicle_make }}</p>
+                            <p><strong>Model:</strong> {{ appointment.vehicle_model }}</p>
+                            <p><strong>Year:</strong> {{ appointment.vehicle_year }}</p>
+                            <p><strong>License Plate:</strong> {{ appointment.vehicle_license }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Customer Information</h6>
+                            <p><strong>Name:</strong> {{ appointment.customer.get_full_name|default:appointment.customer.username }}</p>
+                            <p><strong>Email:</strong> {{ appointment.customer.email }}</p>
+                            {% if appointment.customer.phone %}
+                                <p><strong>Phone:</strong> {{ appointment.customer.phone }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if appointment.special_requirements %}
+                        <hr>
+                        <h6>Special Requirements</h6>
+                        <p class="text-muted">{{ appointment.special_requirements }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Actions</h6>
+                </div>
+                <div class="card-body">
+                    {% if user == appointment.customer %}
+                        {% if appointment.status == 'booked' and appointment.slot_date >= today %}
+                            <a href="{% url 'appointments:cancel_appointment' appointment.id %}" 
+                               class="btn btn-danger btn-block mb-2">
+                                <i class="fas fa-times"></i> Cancel Appointment
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'appointments:my_appointments' %}" class="btn btn-secondary btn-block">
+                            <i class="fas fa-arrow-left"></i> Back to My Appointments
+                        </a>
+                    {% endif %}
+
+                    {% if user.role == 'employee' or user.role == 'admin' or user.is_staff %}
+                        <!-- Employee Quick Update Button - Always Visible -->
+                        <a href="{% url 'appointments:update_status' appointment.id %}" 
+                           class="btn btn-warning btn-block mb-2">
+                            <i class="fas fa-edit"></i> Update Status & Work
+                        </a>
+                        
+                        {% if appointment.status == 'booked' and not appointment.assigned_employee %}
+                            <form method="post" action="{% url 'appointments:update_status' appointment.id %}" class="mb-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="assign_self">
+                                <button type="submit" class="btn btn-primary btn-block">
+                                    <i class="fas fa-hand-paper"></i> Assign to Me
+                                </button>
+                            </form>
+                        {% endif %}
+                        
+                        {% if appointment.assigned_employee == user and appointment.status == 'assigned' %}
+                            <form method="post" action="{% url 'appointments:update_status' appointment.id %}" class="mb-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="start_work">
+                                <button type="submit" class="btn btn-success btn-block">
+                                    <i class="fas fa-play"></i> Start Work
+                                </button>
+                            </form>
+                        {% endif %}
+                        
+                        {% if appointment.assigned_employee == user and appointment.status == 'in_progress' %}
+                            <form method="post" action="{% url 'appointments:update_status' appointment.id %}" class="mb-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="complete_work">
+                                <button type="submit" class="btn btn-success btn-block">
+                                    <i class="fas fa-check"></i> Complete Work
+                                </button>
+                            </form>
+                        {% endif %}
+                        
+                        <a href="{% url 'appointments:appointment_list' %}" class="btn btn-secondary btn-block">
+                            <i class="fas fa-list"></i> Back to All Appointments
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Service Information</h6>
+                </div>
+                <div class="card-body">
+                    {% if appointment.selected_service.image %}
+                        <img src="{{ appointment.selected_service.image.url }}" 
+                             class="img-fluid mb-3" alt="{{ appointment.selected_service.name }}">
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <h6 class="text-primary">{{ appointment.selected_service.name }}</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">Service Price:</span>
+                            <span class="h5 text-success mb-0">₹{{ appointment.selected_service.base_price|floatformat:2 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Duration:</span>
+                            <span class="text-dark">{{ appointment.selected_service.duration_hours|floatformat:1 }}h</span>
+                        </div>
+                    </div>
+                    
+                    <p class="text-muted">{{ appointment.selected_service.description|truncatewords:20 }}</p>
+                    <a href="{% url 'services:service_detail' appointment.selected_service.id %}" 
+                       class="btn btn-outline-primary btn-sm">
+                        View Service Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

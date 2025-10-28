@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Cancel Appointment #{{ appointment.id }} - CarModX{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-6 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0"><i class="fas fa-times-circle"></i> Cancel Appointment #{{ appointment.id }}</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Appointment Information -->
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Are you sure you want to cancel this appointment?</h5>
+                        <p class="mb-0">This action cannot be undone.</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Appointment Details</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Service:</strong> {{ appointment.service.name }}</p>
+                                <p><strong>Customer:</strong> {{ appointment.customer.get_full_name }}</p>
+                                <p><strong>Date:</strong> {{ appointment.time_slot.date|date:"F d, Y" }}</p>
+                                <p><strong>Time:</strong> {{ appointment.time_slot.start_time|time:"g:i A" }} - {{ appointment.time_slot.end_time|time:"g:i A" }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Vehicle:</strong> {{ appointment.vehicle_make }} {{ appointment.vehicle_model }}</p>
+                                <p><strong>Year:</strong> {{ appointment.vehicle_year }}</p>
+                                <p><strong>License:</strong> {{ appointment.vehicle_license }}</p>
+                                <p><strong>Price:</strong> ₹{{ appointment.estimated_price }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post" id="cancel-form">
+                        {% csrf_token %}
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'appointments:appointment_detail' appointment.id %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> Back to Details
+                            </a>
+                            <button type="submit" class="btn btn-danger btn-lg" id="cancel-btn">
+                                <i class="fas fa-times"></i> Cancel Appointment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('cancel-form');
+    const submitBtn = document.getElementById('cancel-btn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            if (!confirm('Are you absolutely sure you want to cancel this appointment? This action cannot be undone.')) {
+                e.preventDefault();
+                return;
+            }
+            
+            // Show loading state
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Cancelling...';
+            submitBtn.disabled = true;
+            
+            // Re-enable button after 15 seconds as fallback
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-times"></i> Cancel Appointment';
+            }, 15000);
+        });
+    }
+});
+</script>
+{% endblock %}

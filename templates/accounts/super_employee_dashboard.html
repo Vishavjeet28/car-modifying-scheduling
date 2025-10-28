@@ -1,0 +1,400 @@
+{% extends 'base.html' %}
+
+{% block title %}Super Employee Dashboard - CarModX{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-users-cog text-primary"></i> Super Employee Dashboard</h2>
+                    <p class="text-muted">Manage employees, assign tasks, and monitor progress</p>
+                </div>
+                <div>
+                    <span class="badge bg-success fs-6">{{ employee.get_employee_type_display }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ total_employees }}</h3>
+                            <p class="card-text">Total Employees</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ available_employees }}</h3>
+                            <p class="card-text">Available</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ busy_employees }}</h3>
+                            <p class="card-text">Busy</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ work_completed_today }}</h3>
+                            <p class="card-text">Completed Today</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-trophy fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Management Interface -->
+    <div class="row">
+        <!-- Employee Management Panel -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-users"></i> Employee Management</h5>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#assignTaskModal">
+                                <i class="fas fa-plus"></i> Assign Task
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="refreshEmployeeStatus()">
+                                <i class="fas fa-sync"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Employee Status Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Status</th>
+                                    <th>Active Tasks</th>
+                                    <th>Completed Today</th>
+                                    <th>Performance</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for emp_stat in employee_stats %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm rounded-circle bg-light me-3 d-flex align-items-center justify-content-center">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div>
+                                                <strong>{{ emp_stat.employee.user.get_full_name }}</strong><br>
+                                                <small class="text-muted">{{ emp_stat.employee.employee_id }} | {{ emp_stat.employee.specialization }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ emp_stat.status_color }}">
+                                            {{ emp_stat.employee.get_current_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ emp_stat.active_tasks }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">{{ emp_stat.completed_today }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <small>{{ emp_stat.employee.performance_rating|floatformat:1 }}/5.0</small>
+                                            <div class="progress ms-2" style="width: 60px; height: 10px;">
+                                                <div class="progress-bar" role="progressbar" style="width: {{ emp_stat.employee.performance_rating|floatformat:0|add:'0' }}%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-outline-primary" onclick="assignTaskToEmployee({{ emp_stat.employee.id }}, '{{ emp_stat.employee.user.get_full_name }}')">
+                                                <i class="fas fa-tasks"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary" onclick="updateEmployeeStatus({{ emp_stat.employee.id }}, '{{ emp_stat.employee.user.get_full_name }}')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No employees found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Panel -->
+        <div class="col-lg-4">
+            <!-- Unassigned Work -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6><i class="fas fa-exclamation-triangle text-warning"></i> Unassigned Work ({{ unassigned_count }})</h6>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    {% for appointment in unassigned_work|slice:":5" %}
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                        <div>
+                            <small><strong>{{ appointment.selected_service.name }}</strong></small><br>
+                            <small class="text-muted">{{ appointment.slot_date }} - {{ appointment.get_slot_time_display }}</small><br>
+                            <small class="text-muted">{{ appointment.customer.get_full_name }}</small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="quickAssignWork({{ appointment.id }})">
+                            Assign
+                        </button>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center">No unassigned work</p>
+                    {% endfor %}
+                    
+                    {% if unassigned_count > 5 %}
+                    <div class="text-center mt-3">
+                        <button class="btn btn-sm btn-outline-primary" onclick="showAllUnassigned()">
+                            View All {{ unassigned_count }} Items
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Assignments -->
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-history"></i> Recent Assignments</h6>
+                </div>
+                <div class="card-body" style="max-height: 250px; overflow-y: auto;">
+                    {% for assignment in my_assignments %}
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-start border-3 border-{{ assignment.get_priority_color }} bg-light">
+                        <div>
+                            <small><strong>{{ assignment.title }}</strong></small><br>
+                            <small class="text-muted">To: {{ assignment.assigned_to.user.get_full_name }}</small><br>
+                            <small>
+                                <span class="badge bg-{{ assignment.get_status_color }}">{{ assignment.get_status_display }}</span>
+                                <span class="badge bg-{{ assignment.get_priority_color }}">{{ assignment.get_priority_display }}</span>
+                            </small>
+                        </div>
+                        <a href="{% url 'accounts:task_assignment_detail' assignment.id %}" class="btn btn-sm btn-outline-primary">
+                            View
+                        </a>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center">No recent assignments</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Analytics -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line"></i> Team Performance Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <h3 class="text-primary">{{ total_active_work }}</h3>
+                            <p>Active Work Items</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <h3 class="text-success">{{ work_completed_today }}</h3>
+                            <p>Completed Today</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <h3 class="text-{% if overdue_assignments > 0 %}danger{% else %}success{% endif %}">{{ overdue_assignments }}</h3>
+                            <p>Overdue Assignments</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Task Modal -->
+<div class="modal fade" id="assignTaskModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign Task to Employee</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'accounts:assign_task' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="assigned_to" class="form-label">Assign To Employee</label>
+                                <select name="assigned_to" id="assigned_to" class="form-select" required>
+                                    <option value="">Select Employee</option>
+                                    {% for emp in all_employees %}
+                                    <option value="{{ emp.id }}">{{ emp.user.get_full_name }} ({{ emp.employee_id }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="priority" class="form-label">Priority</label>
+                                <select name="priority" id="priority" class="form-select">
+                                    <option value="low">Low</option>
+                                    <option value="normal" selected>Normal</option>
+                                    <option value="high">High</option>
+                                    <option value="urgent">Urgent</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Task Title</label>
+                        <input type="text" name="title" id="title" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea name="description" id="description" class="form-control" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="due_date" class="form-label">Due Date</label>
+                                <input type="datetime-local" name="due_date" id="due_date" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="appointment_id" class="form-label">Related Appointment (Optional)</label>
+                                <select name="appointment_id" id="appointment_id" class="form-select">
+                                    <option value="">No appointment</option>
+                                    {% for appointment in unassigned_work %}
+                                    <option value="{{ appointment.id }}">{{ appointment.selected_service.name }} - {{ appointment.slot_date }} {{ appointment.get_slot_time_display }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Assign Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Update Employee Status Modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Employee Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'accounts:update_employee_status' %}">
+                {% csrf_token %}
+                <input type="hidden" name="employee_id" id="update_employee_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="employee_name_display" class="form-label">Employee</label>
+                        <input type="text" id="employee_name_display" class="form-control" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select name="status" id="status" class="form-select" required>
+                            <option value="available">Available</option>
+                            <option value="busy">Busy</option>
+                            <option value="break">On Break</option>
+                            <option value="off_duty">Off Duty</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea name="notes" id="notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function assignTaskToEmployee(employeeId, employeeName) {
+    document.getElementById('assigned_to').value = employeeId;
+    new bootstrap.Modal(document.getElementById('assignTaskModal')).show();
+}
+
+function updateEmployeeStatus(employeeId, employeeName) {
+    document.getElementById('update_employee_id').value = employeeId;
+    document.getElementById('employee_name_display').value = employeeName;
+    new bootstrap.Modal(document.getElementById('updateStatusModal')).show();
+}
+
+function quickAssignWork(appointmentId) {
+    document.getElementById('appointment_id').value = appointmentId;
+    new bootstrap.Modal(document.getElementById('assignTaskModal')).show();
+}
+
+function refreshEmployeeStatus() {
+    location.reload();
+}
+
+// Set default due date to tomorrow
+document.getElementById('due_date').value = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+</script>
+{% endblock %}
