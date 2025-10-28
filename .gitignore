@@ -1,26 +1,46 @@
-<<<<<<< HEAD
 # macOS
 .DS_Store
 .AppleDouble
 .LSOverride
+Thumbs.db
 
-# VS Code
+# VS Code & IDEs
 .vscode/
+.idea/
 .history/
 *.code-workspace
+*.iml
+*.swp
+*.swo
 
-=======
->>>>>>> 6ea5b3b83200457378aaa6215471291b1590a2b0
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-<<<<<<< HEAD
+.Python
+
+# Django
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+db.sqlite3
+db.sqlite3-journal
+local_settings.py
+media/
+staticfiles/
+static_root/
 
 # Virtual environments
-=======
-.Python
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging & Build
 build/
 develop-eggs/
 dist/
@@ -38,33 +58,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
-# Django
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-media/
-
-# Virtual Environment
->>>>>>> 6ea5b3b83200457378aaa6215471291b1590a2b0
-.venv/
-venv/
-env/
-ENV/
-
-<<<<<<< HEAD
-# Django
-*.log
-*.pot
-*.pyc
-*.pyo
-*.pyd
-*.sqlite3
-db.sqlite3
-media/
-staticfiles/
-static_root/
+pip-wheel-metadata/
 
 # Unit test / coverage
 htmlcov/
@@ -80,58 +74,22 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# Packaging
-build/
-**/dist/
-.eggs/
-*.egg-info/
-*.egg
-
 # Migrations cache (keep actual migration files)
 **/migrations/__pycache__/
 
 # Environment & secrets
 .env
 .env.*
+.env.local
+.env.production
 *.env
 *.pem
 *.key
 
-# IDEs
-.idea/
-*.iml
-
 # Node (if present)
 node_modules/
 
-# Others
-Thumbs.db
-pip-wheel-metadata/
+# Type checking
 .pyre/
 .pytype/
 .mypy_cache/
-=======
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment variables
-.env
-.env.local
-.env.production
-
-# Test coverage
-htmlcov/
-.coverage
-.coverage.*
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
->>>>>>> 6ea5b3b83200457378aaa6215471291b1590a2b0
