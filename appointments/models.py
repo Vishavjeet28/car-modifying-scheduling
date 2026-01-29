@@ -117,18 +117,18 @@ class Appointment(models.Model):
         if selected_date < date.today():
             return []
         
+        # Optimization: Fetch all active appointments for the day in one query
+        active_appointments = cls.objects.filter(
+            slot_date=selected_date,
+            status__in=['booked', 'assigned', 'in_progress', 'on_hold']
+        )
+        occupied_slots = set(appt.slot_time for appt in active_appointments)
+
         available_slots = []
         
         for slot_time, slot_display in cls.TIME_SLOT_CHOICES:
             # Check if this specific time slot is occupied by an active appointment
-            active_appointment = cls.objects.filter(
-                slot_date=selected_date,
-                slot_time=slot_time,
-                status__in=['booked', 'assigned', 'in_progress', 'on_hold']
-            ).first()
-            
-            # If no active appointment exists, the slot is available
-            if not active_appointment:
+            if slot_time not in occupied_slots:
                 available_slots.append({
                     'time': slot_time,
                     'display': slot_display,
@@ -154,15 +154,17 @@ class Appointment(models.Model):
             ).exists()
             return 0 if occupied else 1
         else:
-            # Count available slots for the day
+            # Optimization: Get all occupied slot times in one query
+            occupied_slots = cls.objects.filter(
+                slot_date=selected_date,
+                status__in=['booked', 'assigned', 'in_progress', 'on_hold']
+            ).values_list('slot_time', flat=True)
+
+            occupied_set = set(occupied_slots)
+
             available_count = 0
             for slot_time, _ in cls.TIME_SLOT_CHOICES:
-                occupied = cls.objects.filter(
-                    slot_date=selected_date,
-                    slot_time=slot_time,
-                    status__in=['booked', 'assigned', 'in_progress', 'on_hold']
-                ).exists()
-                if not occupied:
+                if slot_time not in occupied_set:
                     available_count += 1
             return available_count
     
@@ -172,11 +174,14 @@ class Appointment(models.Model):
         Get detailed information about all time slots for a specific date.
         Shows which slots are occupied and which are available.
         """
-        # Get all active appointments for the date
-        active_appointments = cls.objects.filter(
+        # Optimization: Get all active appointments for the date in one query
+        active_appointments = list(cls.objects.filter(
             slot_date=selected_date,
             status__in=['booked', 'assigned', 'in_progress', 'on_hold']
-        ).select_related('customer', 'selected_service', 'assigned_employee').order_by('slot_time')
+        ).select_related('customer', 'selected_service', 'assigned_employee').order_by('slot_time'))
+
+        # Create a lookup map
+        appointments_map = {appt.slot_time: appt for appt in active_appointments}
         
         # Build slot information
         time_slots_info = []
@@ -184,7 +189,7 @@ class Appointment(models.Model):
         
         for slot_time, slot_display in cls.TIME_SLOT_CHOICES:
             # Find appointment occupying this slot
-            appointment = active_appointments.filter(slot_time=slot_time).first()
+            appointment = appointments_map.get(slot_time)
             
             slot_info = {
                 'time': slot_time,
