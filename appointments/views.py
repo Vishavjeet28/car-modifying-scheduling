@@ -75,12 +75,16 @@ def get_available_slots_api(request):
     
     # Get detailed info about all slots
     all_slots_info = []
+
+    # Check if user has permission to view appointment details
+    is_privileged = request.user.is_authenticated and (request.user.is_staff or getattr(request.user, 'role', '') == 'employee')
+
     for slot_info in daily_details['slots']:
         all_slots_info.append({
             'time': slot_info['time'],
             'display': slot_info['display'],
             'occupied': slot_info['occupied'],
-            'appointment': slot_info['appointment']
+            'appointment': slot_info['appointment'] if is_privileged else None
         })
     
     return JsonResponse({
